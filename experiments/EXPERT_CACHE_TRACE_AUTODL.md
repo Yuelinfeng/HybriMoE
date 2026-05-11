@@ -1,5 +1,32 @@
 # Live Expert Cache Trace on AutoDL
 
+## Scripted Run
+
+```bash
+cd /root/autodl-tmp/benchmark/src/HybriMoE
+chmod +x experiments/run_live_trace_autodl.sh
+
+GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
+CACHE_SIZE=16 \
+PREFETCH_SIZE=4 \
+bash experiments/run_live_trace_autodl.sh
+```
+
+To compare prefetch settings:
+
+```bash
+cd /root/autodl-tmp/benchmark/src/HybriMoE
+chmod +x experiments/run_live_trace_autodl.sh
+
+for p in 0 4 8; do
+  GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
+  CACHE_SIZE=16 \
+  PREFETCH_SIZE="$p" \
+  RUN_TAG="cache16_prefetch${p}" \
+  bash experiments/run_live_trace_autodl.sh
+done
+```
+
 这个 trace 接在 `KExpertsMarlin` 的真实 expert cache/load 路径上，用来补上 router replay 不能证明的部分：当前层专家是否已经在 GPU cache、哪些专家被 HybriMoE 放到 GPU/CPU 执行、以及下一层预取实际发起了哪些 expert load。
 
 ## 运行
