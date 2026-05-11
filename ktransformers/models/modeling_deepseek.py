@@ -63,6 +63,7 @@ from transformers.utils import (
 )
 from transformers.utils.import_utils import is_torch_fx_available
 from ktransformers.operators.experts import KScoreAwareCache
+from ktransformers.util.router_trace import trace_router_assignments
 from .configuration_deepseek import DeepseekV2Config
 import torch.distributed as dist
 import numpy as np
@@ -461,6 +462,17 @@ class MoEGate(nn.Module):
             topk_weight = topk_weight / denominator
         else:
             topk_weight = topk_weight * self.routed_scaling_factor
+        trace_router_assignments(
+            model_type="deepseek_v2",
+            layer_idx=self.layer_idx,
+            topk_idx=topk_idx,
+            topk_weight=topk_weight,
+            num_experts=self.n_routed_experts,
+            batch_size=bsz,
+            sequence_length=seq_len,
+            top_k=self.top_k,
+            metadata={"topk_method": self.topk_method, "scoring_func": self.scoring_func},
+        )
         ### expert-level computation auxiliary loss
         if self.training and self.alpha > 0.0:
             scores_for_aux = scores

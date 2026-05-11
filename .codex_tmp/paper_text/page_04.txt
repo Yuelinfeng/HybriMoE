@@ -1,0 +1,194 @@
+arg min
+cpu expert,gpu expert
+max(CP UT IM E(cpu expert),
+GP UT IM E(gpu expert)) (2)
+This formulation does not account for the finish time of data transfers,
+as expert loading must be completed before GPU computation begins.
+Based on these priority rules, HybriMoE divides all activated
+experts into a GPU queue and a CPU queue. The GPU queue contains
+cached experts on the GPU, sorted by load in descending order. The
+CPU queue contains uncached experts on the CPU, sorted by load in
+ascending order.
+Before the actual execution, HybriMoE performs a simulation
+phase to evaluate scheduling strategies and identify an efficient task
+allocation plan tailored to the specific workload. This simulation
+approximates the execution process by iteratively filling the CPU
+computation, GPU computation, and data transferring timelines,
+enabling the system to determine a scheduling configuration that
+minimizes overall latency while balancing resource utilization across
+heterogeneous hardware.
+During each step of the simulation, the system selects the timeline
+with the earliest completion time and executes the corresponding
+operation—either a computation task on the CPU or GPU, or a data
+transfer via PCIE. Task selection adheres to the scheduling priorities:
+the GPU prioritizes high-load cached experts, the CPU focuses on
+low-load uncached experts and, when its queue is empty, processes
+low-load cached experts from the GPU queue, while PCIE prioritizes
+high-load uncached experts for faster availability on the GPU.
+If an expert is transferred from the CPU to the GPU, it is inserted
+into the GPU queue in descending order of load, ensuring high-load
+tasks are prioritized for GPU computation. This iterative simulation
+continues until all experts are computed, effectively modeling the
+execution process and testing different scheduling strategies.
+The scheduling process is illustrated through an example in fig-
+ure 5. In this scenario, the GPU computation time is assumed to be
+constant, the CPU computation time is proportional to the expert’s
+load, and the transmission time is fixed at 3 units. The scheduling
+algorithm in HybriMoE identifies an optimal strategy where the CPU
+computes the cached expert E while the GPU processes the uncached
+expert C, effectively improving hardware utilization by balancing
+workloads across resources.
+C. Impact-driven prefetching
+Due to the residual connections in LLMs, hidden states across
+consecutive layers exhibit a high degree of similarity, making expert
+prefetching an effective method to optimize resource utilization.
+While several existing works have adopted prefetching mechanisms,
+none of them discuss the critical trade-offs involved when multiple
+subsequent layers’ experts can be prefetched. Specifically, these
+works do not explore how to strategically decide which layer’s experts
+should be prioritized for prefetching to maximize resource efficiency.
+Inspired by the scheduling algorithm in IV-B, we propose impact-
+driven prefetching. Before executing a prefetch, the system performs
+a simulation to evaluate the potential gains of prefetching specific
+experts. This simulation estimates the impact of preloading a given
+expert on overall scheduling efficiency, allowing the algorithm to
+prioritize experts that yield the highest resource utilization im-
+provements. The greedy nature of this simulation ensures minimal
+computational overhead, making it practical for real-time inference
+scenarios.
+(a) Step 1: Compute A on CPU
+(c) Step 3&4: Compute D on GPU and load C
+(d) Step 5: Compute E on CPU (e) Step 6: Compute C on GPU
+(b) Step 2: Compute B on CPU
+CPU
+A:1 B:1 C:3
+GPU
+D:4E:1
+PCIE
+CPU Queue
+GPU Queue
+CPU
+B:1 C:3
+GPU
+D:4E:1
+PCIE
+CPU Queue
+GPU Queue
+CPU
+C:3
+GPU
+D:4E:1
+PCIE
+CPU Queue
+GPU Queue
+GPU
+PCIE
+CPU
+Shared Expert
+A
+D
+C
+B C
+Time
+③ ④ load C to GPU instead of
+computing C on CPU 
+Finish
+GPU
+PCIE
+CPU
+Shared Expert
+A
+D
+C
+B E
+C
+⑤
+Time
+GPU
+PCIE
+CPU
+Time
+Shared Expert
+A
+D
+C
+B
+②
+Time
+GPU
+PCIE
+CPU
+Shared Expert
+A
+D
+C
+①
+Finish
+GPU
+PCIE
+CPU
+Shared Expert
+A
+D
+C
+B E
+Time
+C
+⑥
+Finish
+Previous
+scheduling
+Unselected
+choices
+Selected
+choiceE:i Expert E
+workload i
+select A for execution
+ and discard C & D
+select B for execution
+ and discard C & D
+Fig. 5. An example of hybrid scheduling. The CPU computes the cached
+expert E while the GPU computes the uncached expert C to achieve better
+hardware utilization.
+Gate 1
+Gate 2
+Gate 3
+Gate 4
+MoE
+in Layer 1
+Non-MoE in
+Layer 2
+SimulatorPrefetch most
+important expert(s)  
+i
+Gate 2
+Gate 3
+Gate 4
+Gate 5Expert i in
+layer 3
+Fig. 6. Impact-driven prefetch workflow.
+Specifically, HybriMoE predicts expert activations for the next
+three layers by reusing the gating information from those layers
+as illustrated in figure 6. This prediction guides the prefetching
+mechanism, enabling the system to efficiently preload experts likely
+to be activated in subsequent computations.
+D. Score-aware Caching
+Traditionally, the Least Frequently Used (LFU) and Least Recently
+Used (LRU) algorithms have been employed for MoE cache man-
+agement. However, these strategies fail to account for the specific
+activation patterns observed in MoE models, where expert scores pro-
+vide valuable predictive signals for future activations. As discussed
+in III, not only are currently activated experts likely to be reused in
+the future, but experts with high scores that were not activated also
+exhibit a higher probability of being selected in subsequent iterations.
+To leverage this insight, we propose Score-Aware Caching, a novel
+cache replacement strategy tailored for MoE models. Specifically, we
+introduce the Minus Recent Score (MRS) replacement policy, which
+prioritizes retaining experts based on their routing scores.
+Define s as the routing scores of all experts in the current iteration,
+S as the estimated priority score, α as the averaging coefficient, the
+update of the estimated priority can be expressed as :
+S = α × T opP(s) + (1 − α) × S (3)
+Here, only the top p expert scores will be accumulated. This is
+derived from the observation in figure 3(b) that the reuse probability
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

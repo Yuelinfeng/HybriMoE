@@ -1,0 +1,117 @@
+TABLE II
+CONFIGURATION OF THREE EVALUATED MOE MODELS .
+Mixtral Qwen2 DeepSeek
+#Layers 32 28 26
+#Shared Experts 0 1 2
+#Routed Experts 8 64 64
+#Activated Experts 2 8 6
+Shared Expert Size / (3584, 20480) (2048, 1408)
+Routed Expert Size (4096, 14336) (3584, 18944) (2048, 1408)
+of experts with lower scores does not exhibit significant differences.
+Typically, we set p to twice the number of activated experts.
+V. S YSTEM IMPLEMENTATION
+We implement the HybriMoE system on top of the kTransformers
+framework and llama.cpp kernels. KTransformers provides a flexible
+infrastructure for kernel injection, enabling seamless support for
+hybrid CPU-GPU execution. To optimize the system workflow, we
+incorporate parallel execution across CPU, GPU, and PCIe transfers,
+utilizing fine-grained CUDA stream scheduling for efficient resource
+management. Additionally, we modify the C++ kernels to handle
+expert computation task allocation directly, minimizing redundant
+Python overhead and improving execution efficiency. For quantiza-
+tion, we leverage Marlin quantization, a state-of-the-art 4-bit quanti-
+zation kernel from llama.cpp, to significantly enhance computational
+efficiency and reduce memory usage.
+VI. E XPERIMENTAL RESULTS
+A. Experimental Setup
+1) Platforms: We evaluate HybriMoE on the NVIDIA RTX
+A6000. For the CPU, we utilize an Intel Xeon Gold 5220R processor,
+restricting usage to 10 cores to simulate real-world edge deployment
+scenarios with limited resources. To assess the system’s performance
+and scalability under varying hardware configurations, we adjust the
+upper bound of the GPU expert cache ratio.
+2) Models: We evaluate our system using three widely adopted
+MoE models with distinct characteristics: Mixtral-8x7B-Instruct [17]
+(Mixtral), DeepSeek-V2-Lite-Chat [18] (DeepSeek), and Qwen2-
+57B-A14B-Instruct [16] (Qwen2). As summarized in Table II, these
+models differ in the number and size of experts, as well as their
+architectural configurations. Mixtral represents MoE models with a
+smaller number of larger experts, while Qwen2 and DeepSeek are
+representative of models with a larger number of smaller experts.
+Notably, Qwen2 and DeepSeek also incorporate shared experts, which
+are activated for all input tokens.
+3) Baselines: We evaluate HybriMoE against three representative
+open-source MoE inference frameworks: llama.cpp [27], AdapMoE
+[5], and kTransformers [13], each representing a distinct scheduling
+approach. llama.cpp is a CPU-GPU hybrid scheduling baseline that
+statically maps model layers to CPU or GPU. AdapMoE is the SOTA
+for GPU-centric MoE scheduling, minimizing on-demand loading
+overhead through adaptive prefetching and caching. kTransformers
+is the SOTA for CPU-GPU hybrid MoE scheduling, mapping high-
+activation-frequency experts (e.g., shared experts) to the GPU to
+maximize efficiency.
+4) Metrics: Auto-regressive decoding consists of two stages: the
+prefill stage and the decoding stage. We evaluate the performance
+of HybriMoE separately for these two stages. For the prefill stage,
+we use Time To First Token (TTFT), which measures the latency
+from receiving the input prompt to generating the first token. For the
+TABLE III
+MOE INFERENCE SPEEDUP BREAKDOWN OF PROPOSED TECHNIQUES .
+Technique Latency(s) Speedup
+Prefill
+Baseline 1.47
+Baseline+Scheduling 1.17 1.26 ×
+Baseline+Prefetching 1.39 1.06 ×
+All 1.13 1.31 ×
+Decode
+Baseline 0.21
+Baseline+Scheduling 0.14 1.46 ×
+Baseline+Prefetching 0.18 1.15 ×
+Baseline+Caching 0.15 1.38 ×
+All 0.11 1.86 ×
+decoding stage, we use Time Between Tokens (TBT), which captures
+the time taken to generate each subsequent token. These metrics
+provide a clear assessment of both initial latency and sustained
+efficiency during inference.
+5) Datasets: For the prefill stage, we evaluate performance under
+varying input lengths by sampling traces of different lengths from
+multiple datasets, including MT Bench [28], Vicuna Bench [29]
+and ChatGPT Prompts [30]. In contrast, for the decoding stage, as
+performance is not sensitive to input length, we use only the ChatGPT
+Prompts dataset to evaluate the TBT metric.
+B. End-to-End Performance
+1) Prefill Stage: We evaluate the prefill stage performance of Hyb-
+riMoE by comparing it against three baselines: llama.cpp, AdapMoE,
+and kTransformers. Figure 7 presents the TTFT results across various
+input legnths(around 32, 128, 512 and 1024 tokens) and different
+GPU expert cache ratios(25%, 50% and 75%).
+HybriMoE demonstrates consistent improvements over the base-
+lines across all input lengths and cache configurations. llama.cpp
+exhibits significantly higher prefill latency due to its naive static
+mapping strategy, which allocates entire layers of experts to the CPU.
+This approach fails to balance workloads effectively, particularly in
+the prefill stage where computational demand is high, leading to
+substantial delays. Compared to kTransformers, HybriMoE achieves
+an average speedup of 1.33× across different input lengths and
+cache configurations. This improvement is driven by HybriMoE’s
+hybrid scheduling and impact-driven prefetching mechanisms, which
+dynamically balance workloads and reduce cache misses, enabling
+more efficient resource utilization.
+2) Decode Stage: Figure 8 illustrates the decode performance
+results for three MoE models. HybriMoE consistently achieves the
+highest throughput across all cache ratios and models, demonstrating
+its ability to dynamically balance workloads and fully utilize hard-
+ware resources during the decode stage. Compared to kTransformers,
+HybriMoE achieves an average throughput improvement of 1.70×.
+Also, it is worth noting that llama.cpp demonstrates relatively strong
+performance in this stage, especially compared to its prefill stage
+results. This is primarily due to the smaller computational load per
+expert in the decode stage, which allows CPU-based computation to
+proceed faster. Additionally, the impact of uneven expert mapping is
+less pronounced compared to the prefill stage, and the overall resource
+overhead remains low, favoring llama.cpp’s static scheduling strategy
+in this specific context.
+C. Ablation Study
+We further explore how the components of our method contribute
+to the result. Performance was measured for Qwen2 under 25%
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

@@ -1,0 +1,101 @@
+REFERENCES
+[1] N. Shazeer, A. Mirhoseini, K. Maziarz, A. Davis, Q. Le, G. Hinton,
+and J. Dean, “Outrageously large neural networks: The sparsely-gated
+mixture-of-experts layer,” arXiv preprint arXiv:1701.06538 , 2017.
+[2] S. Masoudnia and R. Ebrahimpour, “Mixture of experts: a literature
+survey,” Artificial Intelligence Review, vol. 42, pp. 275–293, 2014.
+[3] A. Eliseev and D. Mazur, “Fast inference of mixture-of-experts language
+models with offloading,” arXiv preprint arXiv:2312.17238 , 2023.
+[4] R. Hwang, J. Wei, S. Cao, C. Hwang, X. Tang, T. Cao, M. Yang, and
+M. Rhu, “Pre-gated moe: An algorithm-system co-design for fast and
+scalable mixture-of-expert inference,” arXiv preprint arXiv:2308.12066,
+2023.
+[5] S. Zhong, L. Liang, Y . Wang, R. Wang, R. Huang, and M. Li, “Adapmoe:
+Adaptive sensitivity-based expert gating and management for efficient
+moe inference,” arXiv preprint arXiv:2408.10284 , 2024.
+[6] X. Song, Z. Zhong, and R. Chen, “Promoe: Fast moe-based llm serving
+using proactive caching,” arXiv preprint arXiv:2410.22134 , 2024.
+[7] P. Tang, J. Liu, X. Hou, Y . Pu, J. Wang, P.-A. Heng, C. Li, and
+M. Guo, “Hobbit: A mixed precision expert offloading system for fast
+moe inference,” arXiv preprint arXiv:2411.01433 , 2024.
+[8] J. You, J. Wu, X. Jin, and M. Chowdhury, “Ship compute or ship data?
+why not both?” in 18th USENIX Symposium on Networked Systems
+Design and Implementation (NSDI 21) , 2021, pp. 633–651.
+[9] D. Park and B. Egger, “Improving throughput-oriented llm inference
+with cpu computations,” in Proceedings of the 2024 International
+Conference on Parallel Architectures and Compilation Techniques, 2024,
+pp. 233–245.
+[10] Y . Song, Z. Mi, H. Xie, and H. Chen, “Powerinfer: Fast large lan-
+guage model serving with a consumer-grade gpu,” arXiv preprint
+arXiv:2312.12456, 2023.
+[11] S. Li, H. Lu, T. Wu, M. Yu, Q. Weng, X. Chen, Y . Shan, B. Yuan,
+and W. Wang, “Caraserve: Cpu-assisted and rank-aware lora serving for
+generative llm inference,” arXiv preprint arXiv:2401.11240 , 2024.
+[12] K. Kamahori, Y . Gu, K. Zhu, and B. Kasikci, “Fiddler: Cpu-gpu
+orchestration for fast inference of mixture-of-experts models,” arXiv
+preprint arXiv:2402.07033, 2024.
+[13] KVCache-AI, “Ktransformers: A flexible framework for experiencing
+cutting-edge llm inference optimizations,” 2024, https://github.com/
+kvcache-ai/ktransformers.
+[14] W. Fedus, B. Zoph, and N. Shazeer, “Switch transformers: Scaling to
+trillion parameter models with simple and efficient sparsity,” Journal of
+Machine Learning Research , vol. 23, no. 120, pp. 1–39, 2022.
+[15] M. R. Costa-juss `a, J. Cross, O. C ¸ elebi, M. Elbayad, K. Heafield,
+K. Heffernan, E. Kalbassi, J. Lam, D. Licht, J. Maillard et al. , “No
+language left behind: Scaling human-centered machine translation,”
+arXiv preprint arXiv:2207.04672 , 2022.
+[16] A. Yang, B. Yang, B. Hui, B. Zheng, B. Yu, C. Zhou, C. Li, C. Li,
+D. Liu, F. Huang et al. , “Qwen2 technical report,” arXiv preprint
+arXiv:2407.10671, 2024.
+[17] A. Q. Jiang, A. Sablayrolles, A. Roux, A. Mensch, B. Savary, C. Bam-
+ford, D. S. Chaplot, D. d. l. Casas, E. B. Hanna, F. Bressand et al. ,
+“Mixtral of experts,” arXiv preprint arXiv:2401.04088 , 2024.
+[18] A. Liu, B. Feng, B. Wang, B. Wang, B. Liu, C. Zhao, C. Dengr, C. Ruan,
+D. Dai, D. Guo et al., “Deepseek-v2: A strong, economical, and efficient
+mixture-of-experts language model,” arXiv preprint arXiv:2405.04434 ,
+2024.
+[19] D. Dai, C. Deng, C. Zhao, R. Xu, H. Gao, D. Chen, J. Li, W. Zeng, X. Yu,
+Y . Wuet al., “Deepseekmoe: Towards ultimate expert specialization in
+mixture-of-experts language models,” arXiv preprint arXiv:2401.06066,
+2024.
+[20] R. Y . Aminabadi, S. Rajbhandari, A. A. Awan, C. Li, D. Li, E. Zheng,
+O. Ruwase, S. Smith, M. Zhang, J. Rasley et al., “Deepspeed-inference:
+enabling efficient inference of transformer models at unprecedented
+scale,” in SC22: International Conference for High Performance Com-
+puting, Networking, Storage and Analysis . IEEE, 2022, pp. 1–15.
+[21] Y . Sheng, L. Zheng, B. Yuan, Z. Li, M. Ryabinin, B. Chen, P. Liang,
+C. R ´e, I. Stoica, and C. Zhang, “Flexgen: High-throughput generative
+inference of large language models with a single gpu,” in International
+Conference on Machine Learning . PMLR, 2023, pp. 31 094–31 116.
+[22] J. Li, Q. Su, Y . Yang, Y . Jiang, C. Wang, and H. Xu, “Adaptive
+gating in mixture-of-experts based language models,” arXiv preprint
+arXiv:2310.07188, 2023.
+[23] Y . Wei, J. Du, J. Jiang, X. Shi, X. Zhang, D. Huang, N. Xiao, and Y . Lu,
+“Aptmoe: Affinity-aware pipeline tuning for moe models on bandwidth-
+constrained gpu nodes,” in 2024 SC24: International Conference for
+High Performance Computing, Networking, Storage and Analysis SC .
+IEEE Computer Society, 2024, pp. 1436–1449.
+[24] P. Li, X. Jin, Y . Cheng, and T. Chen, “Examining post-training
+quantization for mixture-of-experts: A benchmark,” arXiv preprint
+arXiv:2406.08155, 2024.
+[25] L. Xue, Y . Fu, Z. Lu, L. Mai, and M. Marina, “Moe-infinity: Activation-
+aware expert offloading for efficient moe serving,” arXiv preprint
+arXiv:2401.14361, 2024.
+[26] X. He, S. Zhang, Y . Wang, H. Yin, Z. Zeng, S. Shi, Z. Tang, X. Chu,
+I. Tsang, and O. Y . Soon, “Expertflow: Optimized expert activation
+and token allocation for efficient mixture-of-experts inference,” 2024.
+[Online]. Available: https://arxiv.org/abs/2410.17954
+[27] G. Gerganov, “ggerganov/llama.cpp: Port of facebook’s llama model in
+c/c++,” 2023. [Online]. Available: https://github.com/ggerganov/llama.
+cpp
+[28] L. Zheng, W.-L. Chiang, Y . Sheng, S. Zhuang, Z. Wu, Y . Zhuang, Z. Lin,
+Z. Li, D. Li, E. Xing et al. , “Judging llm-as-a-judge with mt-bench
+and chatbot arena,” Advances in Neural Information Processing Systems,
+vol. 36, 2024.
+[29] L. Zheng, W.-L. Chiang, Y . Sheng, S. Zhuang, Z. Wu, Y . Zhuang,
+Z. Lin, Z. Li, D. Li, E. P. Xing, H. Zhang, J. E. Gonzalez, and
+I. Stoica, “Judging llm-as-a-judge with mt-bench and chatbot arena,”
+2023. [Online]. Available: https://arxiv.org/abs/2306.05685
+[30] MohamedRashad, “Chatgpt-prompts,” 2023. [Online]. Available: https:
+//huggingface.co/datasets/MohamedRashad/ChatGPT-prompts
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

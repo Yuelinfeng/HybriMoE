@@ -1,0 +1,119 @@
+HybriMoE: Hybrid CPU-GPU Scheduling and Cache
+Management for Efficient MoE Inference
+Shuzhang Zhong 1,2, Yanfan Sun 5, Ling Liang 2, Runsheng Wang 2,3,4, Ru Huang 2,3,4, Meng Li 1,2,4∗
+1Institute for Artificial Intelligence, Peking University, Beijing, China
+2School of Integrated Circuits, Peking University, Beijing, China
+3Institute of Electronic Design Automation, Peking University, Wuxi, China
+4Beijing Advanced Innovation Center for Integrated Circuits, Beijing, China
+5School of Computer Science and Engineering, Beihang University, Beijing, China
+Abstract—The Mixture of Experts (MoE) architecture has demon-
+strated significant advantages as it enables to increase the model capacity
+without a proportional increase in computation. However, the large MoE
+model size still introduces substantial memory demands, which usually
+requires expert offloading on resource-constrained platforms and incurs
+significant overhead. Hybrid CPU-GPU inference has been proposed
+to leverage CPU computation to reduce expert loading overhead but
+faces major challenges: on one hand, the expert activation patterns of
+MoE models are highly unstable, rendering the fixed mapping strategies
+in existing works inefficient; on the other hand, the hybrid CPU-GPU
+schedule for MoE is inherently complex due to the diverse expert sizes,
+structures, uneven workload distribution, etc. To address these challenges,
+in this paper, we propose HybriMoE, a hybrid CPU-GPU inference
+framework that improves resource utilization through a novel CPU-GPU
+scheduling and cache management system. HybriMoE introduces (i) a
+dynamic intra-layer scheduling strategy to balance workloads across CPU
+and GPU, (ii) an impact-driven inter-layer prefetching algorithm, and (iii)
+a score-based caching algorithm to mitigate expert activation instability.
+We implement HybriMoE on top of the kTransformers framework and
+evaluate it on three widely used MoE-based LLMs. Experimental results
+demonstrate that HybriMoE achieves an average speedup of 1.33× in
+the prefill stage and 1.70× in the decode stage compared to state-of-
+the-art hybrid MoE inference framework. Our code is available at:
+https://github.com/PKU-SEC-Lab/HybriMoE.
+I. I NTRODUCTION
+Mixture of Experts (MoE) has emerged as a promising solution to
+enhance computational efficiency of Large Language Models (LLMs)
+without compromising model performance [1], [2]. By employing
+dynamic routing functions that allocate input tokens to a subset of
+experts, MoE enables the scaling of LLM parameters and capabilities
+without a proportional increase in computational demands.
+Despite its advantages, MoE introduces significant memory re-
+quirements, which pose a particular challenge for deployment on edge
+devices with limited memory resources. To mitigate this issue, expert
+offloading techniques store expert weights in secondary storage, such
+as CPU memory or SSDs, and load them into GPU memory through
+PCIE on demand [3]. In such offloading scenarios, the primary
+bottleneck becomes the overhead associated with on-demand loading,
+driven by the large communication scale and limited bandwidth. To
+mitigate this problem, several studies have explored quantization,
+prefetching or caching techniques to reduce latency [4]–[7].
+Previous works in other offloading scenarios have further explored
+leveraging CPU computation to reduce the frequency of memory
+This work was supported in part by NSFC under Grant 62495102 and Grant
+92464104, in part by the National Key Research and Development Program
+under Grant 2024YFB4505004, in part by Beijing Municipal Science and
+Technology Program under Grant Z241100004224015, and in part by 111
+Project under Grant B18001.
+∗Corresponding author: meng.li@pku.edu.cn
+Expert 1 Expert 2
+On-demand loading 4
+Expert 3 Expert 4 Expert 5 Expert 6
+On-demand loading 5 On-demand loading 6
+Expert 1 Expert 2
+On-demand loading 4
+Expert 3 Expert 4
+Expert 5 Expert 6
+Expert 1 Expert 2
+On-demand loading 5
+Expert 5
+Expert 3 Expert 4 Expert 6
+(a) On-demand loading timeline 
+(b) Unbalanced hybrid CPU-GPU timeline 
+(c) Balanced hybrid CPU-GPU timeline 
+Time
+GPU
+PCIE
+GPU
+PCIE
+CPU
+GPU
+PCIE
+CPU
+Expected speedup
+Expected speedup
+Fig. 1. Execution timeline of three scenarios. Expert computation time on
+the GPU remains constant, while CPU execution time increases linearly with
+workload. The balanced scheduling in (c) achieves improved utilization and
+reduces overall execution time.
+transfers [8], [9]. Techniques such as PowerInfer [10] and Caraserve
+[11] have achieved notable success by exploiting activation patterns
+or optimizing adapter usage during inference. Similarly, MoE-specific
+offloading approaches, including Fiddler [12] and kTransformers [13],
+utilize the CPU to execute expert layers during cache misses. As
+illustrated in Figure 1, when a cache miss occurs, the CPU processes
+the corresponding expert computation instead of transferring the layer
+to the GPU, reducing data transfer overhead.
+While CPU computation is effective for traditional inference
+tasks, MoE models present unique challenges that complicate their
+application. Expert activations in MoE models are typically less
+skewed and exhibit significant variability across iterations, making
+it difficult to predict which experts will be activated [6]. This
+dynamic behavior complicates the balancing of workloads between
+CPU and GPU, as static task allocation strategies fail to adapt to real-
+time changes in workload distribution. However, existing solutions
+rely on fixed mapping strategies based on historical activation
+frequencies, neglecting the dynamic and unpredictable nature of MoE
+inference. These limitations result in suboptimal resource utilization
+and increased inference latency as illustrated in figure 1(b) and (c).
+In light of these challenges and opportunities, we propose Hybri-
+MoE, a hybrid CPU-GPU scheduling and cache management system
+to improve the efficiency of MoE inference. Reducing latency in
+hybrid systems requires maximizing hardware resource utilization,
+which depends on effective task-to-hardware mapping. However,
+the dynamic nature of MoE models poses significant challenges to
+designing optimal mapping strategies. To address this, HybriMoE
+introduces a comprehensive optimization framework to improve map-
+ping efficiency through three key directions: (i) intra-layer hybrid
+scheduling, (ii) inter-layer prefetching, and (iii) inter-iteration cache
+2025 62nd ACM/IEEE Design Automation Conference (DAC) | 979-8-3315-0304-8/25/$31.00 ©2025 IEEE | DOI: 10.1109/DAC63849.2025.11133274
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

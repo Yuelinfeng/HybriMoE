@@ -1,0 +1,121 @@
+Norm
+Self-Attention
+Norm
+MoE Block
+1 2 N1 2 3 ...
+Router
+Shared Experts Routed Experts
+...
+Fig. 2. An example of MoE architecture with shared and routed experts.
+management. The key contributions of HybriMoE are as follows:
+• Hybrid MoE CPU-GPU Scheduling. An efficient hybrid
+scheduling algorithm for MoE inference that dynamically bal-
+ances workloads across GPUs and CPUs, optimizing resource
+utilization and minimizing latency through prioritized task exe-
+cution and data transfer management.
+• Impact-driven prefetching. A prefetching mechanism that sim-
+ulates the potential impact of preloading experts from subse-
+quent layers and prioritizes those with the higher expected gains.
+• MoE-specialized Cache Management. An expert score-based
+caching strategy that prioritizes high-demand experts across
+layers to minimize cache misses.
+• System Implementation. We implement HybriMoE on top
+of ktransformers framework. We evaluate HybriMoE on three
+popular MoE-based LLMs and various platforms. Compared to
+existing hybrid scheduling methods, HybriMoE achieves 1.33 ×
+and 1.70x speedup on prefill and decode stages respectively.
+II. B ACKGROUND
+A. Mixture-of-Experts
+Mixture-of-Experts (MoE) models offer an efficient solution for
+handling the computational demands of LLMs by activating only a
+subset of experts [2], [14]–[16]. Unlike traditional dense networks,
+MoE models use a gating function G to select which experts process
+a given input token, reducing the number of active parameters and
+improving computational efficiency. Given an input x and N experts
+E0, ...EN −1 the output y of the MoE layer can be expressed as:
+y =
+N −1X
+i=0
+Softmax(TopK(x · Wg))iEi(x) (1)
+The total number of experts N and the number of activated experts
+K vary among different MoE implementations. For instance, the
+Mixtral model employs 8 experts, with only 2 being active at a time
+[17]. In contrast, DeepSeek utilizes 64 experts, activating 6 at once.
+This larger, finer-grained expert pool allows for greater specialization
+and more efficient knowledge acquisition [18], [19]. Additionally,
+as shown in figure 2, DeepSeek employs a shared expert strategy,
+where a subset of experts—known as shared experts—are activated
+for all tokens. The original experts are defined as routed experts.
+This reduces redundancy among experts, ensuring efficient processing
+by minimizing unnecessary computational overlap, thus enhancing
+overall model efficiency.
+B. Efficient MoE Offloading
+Parameter-offloading techniques have been proposed to address the
+significant memory requirements of large language models (LLMs)
+[20], [21]. However, these techniques are primarily designed for dense
+models and involve loading or prefetching all parameters, leading to
+unnecessary communication overhead. To accommodate the sparse
+TABLE I
+COMPARISON WITH EXISTING OFFLOADING WORKS .
+Offload
+Granularity
+CPU
+Computation
+Dynamic
+Mapping
+Cache
+Optimization
+Powerinfer Neuron Decode ✓ LFU
+llama.cpp Layer Prefill+Decode × LFU
+AdapMoE Expert × ✓ LRU
+KTrans Expert Decode × LFU
+Ours Expert Prefill+Decode ✓ Score-Aware
+activation patterns in Mixture-of-Experts (MoE) models, several spe-
+cialized techniques have been introduced, including advanced gating,
+prefetching, and quantization strategies [3]–[7], [22]–[26]. These
+methods aim to minimize the on-demand loading overhead, reducing
+unnecessary memory transfers and improving overall performance.
+C. Hybrid CPU-GPU Scheduling
+Previous offloading techniques have primarily focused on reducing
+memory transfer overhead by offloading certain computations to
+the CPU [9]. For instance, PowerInfer [10] reduces GPU mem-
+ory demand by executing less frequently activated neurons on the
+CPU, taking advantage of skewed activation patterns. Caraserve
+[11] addresses cold-start delays in LoRA serving by utilizing CPU
+assistance and employing rank-aware scheduling to reduce latency.
+These methods are effective in scenarios where activations are skewed
+or tasks have long periods of parameter reuse.
+In the context of MoE models, techniques like Fiddler [12] and
+kTransformers [13] extend this concept by offloading expert layer
+computation to the CPU during cache misses. Specifically, when an
+expert is not in the GPU cache, the CPU executes the corresponding
+expert layer instead of loading it from memory. These approaches
+aim to optimize memory usage by exploiting CPU-GPU parallelism
+and mitigating the overhead of loading large models onto the GPU.
+In table I, we compare HybriMoE with prior-art works qualita-
+tively. As can be observed, HybriMoE features CPU-GPU hybrid
+scheduling to improve the efficiency of both prefill and decode stages.
+III. M OTIVATION
+The primary bottleneck in existing hybrid CPU-GPU scheduling
+for MoE inference is the suboptimal resource utilization. To address
+this issue, we begin by analyzing the main challenges of finding an
+efficient mapping strategy.
+Challenge 1: High Instability of MoE Activation Patterns. In
+existing hybrid CPU-GPU scheduling research, both sparse models
+with highly skewed activations, like PowerInfer, and dense models
+(or LoRA inference) exhibit relatively stable activation patterns. In
+these models, activation is either concentrated on a few ‘hot’ neurons
+or remains consistent over time, making scheduling and workload
+balancing easier. In contrast, MoE models have unpredictable ac-
+tivation patterns, with experts being activated in a dynamic and
+frequently changing manner. As shown in figure 3(a), compared with
+neuron-level sparsity, the activation frequency of MoE is more evenly
+distributed, making it challenging to predict the future expert usage.
+This lack of stability makes it difficult to determine an optimal CPU-
+GPU scheduling strategy in advance, leading to suboptimal resource
+utilization and inefficiency.
+Opportunity 1: MoE-specific Cache and Prefetch Optimiza-
+tion. Despite the instability of MoE activations, certain temporal
+and structural patterns present opportunities for optimization. The
+temporal correlation of expert activation provides a basis for cache
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

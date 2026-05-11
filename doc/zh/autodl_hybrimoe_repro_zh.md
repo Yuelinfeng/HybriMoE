@@ -318,7 +318,7 @@ python -m ktransformers.local_chat \
   --gguf_path "$WORK/models/DeepSeek-V2-Lite-Chat-GGUF" \
   --cache_size 16 \
   --prefetch_size 0 \
-  --optimize_rule_path ktransformers/optimize/optimize_rules/DeepSeek-V2-Chat-gpu.yaml
+  --optimize_config_path ktransformers/optimize/optimize_rules/DeepSeek-V2-Chat-gpu.yaml
 ```
 
 如果使用其他模型或 GGUF 量化文件，先确认 `--model_path`、`--gguf_path` 和 optimize rule 三者匹配。
@@ -344,6 +344,12 @@ python -m ktransformers.local_chat \
 `https://github.com` 连接超时
 
 改用 SSH remote，必要时用 GitHub SSH over 443。见第 2 节。
+
+`NameError: name 'flash_attn_func' is not defined`
+
+这说明模型已经进入 forward，但 `ktransformers/operators/attention.py` 中的 `from flash_attn import flash_attn_func` 导入失败。源码会吞掉这个异常，然后在 Linux Triton/FlashInfer 的 prefill 分支里继续调用 `flash_attn_func`，所以抛出 NameError。
+
+如果不想编译 flash-attn，将两处 `flash_attn_func(...)` 替换为 PyTorch `F.scaled_dot_product_attention(...)`。这个改法是项目 FAQ 给出的 fallback 方向，不需要重新编译 native extension。
 
 ## 10. 最小状态检查清单
 

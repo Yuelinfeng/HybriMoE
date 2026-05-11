@@ -58,6 +58,7 @@ from transformers.utils import (
     replace_return_docstrings,
 )
 from transformers.models.qwen2_moe.configuration_qwen2_moe import Qwen2MoeConfig
+from ktransformers.util.router_trace import trace_router_assignments
 
 
 if is_flash_attn_2_available():
@@ -801,8 +802,9 @@ QWEN2MOE_ATTENTION_CLASSES = {
 
 
 class Qwen2MoeSparseMoeBlock(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, layer_idx=None):
         super().__init__()
+        self.layer_idx = layer_idx
         self.num_experts = config.num_experts
         self.top_k = config.num_experts_per_tok
         self.norm_topk_prob = config.norm_topk_prob
@@ -827,6 +829,17 @@ class Qwen2MoeSparseMoeBlock(nn.Module):
         routing_weights, selected_experts = torch.topk(routing_weights, self.top_k, dim=-1)
         if self.norm_topk_prob:
             routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
+        trace_router_assignments(
+            model_type="qwen2_moe",
+            layer_idx=self.layer_idx,
+            topk_idx=selected_experts,
+            topk_weight=routing_weights,
+            num_experts=self.num_experts,
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            top_k=self.top_k,
+            metadata={"norm_topk_prob": self.norm_topk_prob},
+        )
         # we cast back to the input dtype
         routing_weights = routing_weights.to(hidden_states.dtype)
 
@@ -872,7 +885,7 @@ class Qwen2MoeDecoderLayer(nn.Module):
         if (layer_idx not in config.mlp_only_layers) and (
             config.num_experts > 0 and (layer_idx + 1) % config.decoder_sparse_step == 0
         ):
-            self.mlp = Qwen2MoeSparseMoeBlock(config)
+            self.mlp = Qwen2MoeSparseMoeBlock(config, layer_idx=layer_idx)
         else:
             self.mlp = Qwen2MoeMLP(config, intermediate_size=config.intermediate_size)
 

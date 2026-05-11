@@ -1,0 +1,8 @@
+{
+  "trace_path": "results\\router_trace_smoke\\router_trace.jsonl",
+  "model_type": "smoke",
+  "events_used": 6,
+  "events_skipped": 0,
+  "num_experts": 4,
+  "max_assignments_per_event": 4
+}

@@ -1,0 +1,8 @@
+{
+  "trace_path": "C:\\Users\\Leave\\Downloads\\router_trace.jsonl",
+  "model_type": "deepseek_v2",
+  "events_used": 260,
+  "events_skipped": 0,
+  "num_experts": 64,
+  "max_assignments_per_event": 48
+}

@@ -36,6 +36,7 @@ from abc import ABC, abstractmethod
 from ktransformers.operators.linear import KLinearMarlin, KLinearTorch, KTransformersLinear
 import time
 from ktransformers.operators.cpuinfer import CPUInfer
+from ktransformers.util.expert_cache_trace import trace_expert_cache_event
 
 
 # class Base(BaseInjectedModule, ABC):
@@ -449,6 +450,22 @@ class KExpertsMarlin(KExpertsBase):
         load_idxs, unload_idxs, org_indexes = self.cache.get_expert_place(unique_selected_experts, self.layer_idx)
         cpu_idxs, gpu_idxs, cpu_indexes = self.cache.calc_experts(
             load_idxs, unload_idxs, org_indexes, generate, id_counts
+        )
+        trace_expert_cache_event(
+            event_type="placement",
+            layer_idx=self.layer_idx,
+            generate=generate,
+            selected_experts=unique_selected_experts,
+            resident_hit_experts=load_idxs,
+            resident_miss_experts=unload_idxs,
+            gpu_experts=gpu_idxs,
+            cpu_experts=cpu_idxs,
+            assignment_counts=id_counts,
+            cache_load_size=self.cache.load_size[self.layer_idx],
+            prefetch_size=self.cache.prefetch_size,
+            expert_num=self.expert_num,
+            device=self.cache.layer2device.get(self.layer_idx),
+            metadata={"policy": "hss_decode" if generate else "prefill_all_gpu"},
         )
         self.cache.wait_prefetch()
         if not generate:
@@ -952,6 +969,22 @@ class KExpertsCache:
                                 non_blocking=non_blocking,
                             )
                             loading_lock[2].record()
+                        trace_expert_cache_event(
+                            event_type="buffer_load",
+                            layer_idx=initial_layer_idx,
+                            buffered_experts=[expert_uid % self.expert_num_per_layer],
+                            cache_load_size=self.load_size[initial_layer_idx],
+                            prefetch_size=self.prefetch_size,
+                            expert_num=self.expert_num_per_layer,
+                            device=device,
+                            metadata={
+                                "expert_uid": int(expert_uid),
+                                "buffer_slot": int(i),
+                                "init": bool(init),
+                                "prefill": bool(prefill),
+                                "non_blocking": bool(non_blocking),
+                            },
+                        )
                         return
             if init:
                 return
@@ -987,6 +1020,22 @@ class KExpertsCache:
             loading_lock[2].record()
 
         self.loaded_experts_idx[device][initial_layer_idx][expert_uid] = memory_slot
+        trace_expert_cache_event(
+            event_type="load",
+            layer_idx=initial_layer_idx,
+            loaded_experts=[expert_uid % self.expert_num_per_layer],
+            cache_load_size=self.load_size[initial_layer_idx],
+            prefetch_size=self.prefetch_size,
+            expert_num=self.expert_num_per_layer,
+            device=device,
+            metadata={
+                "expert_uid": int(expert_uid),
+                "memory_slot": int(memory_slot),
+                "init": bool(init),
+                "prefill": bool(prefill),
+                "non_blocking": bool(non_blocking),
+            },
+        )
 
     def reset_offload(self):
         for device, layers in self.loaded_experts_idx.items():
@@ -1004,6 +1053,16 @@ class KExpertsCache:
         memory_slot = self.loaded_experts_idx[device][layer_idx][expert_uid]
         self.free_memory_slots[device][self.slots2layer[memory_slot]].append(memory_slot)
         self.loaded_experts_idx[device][layer_idx].pop(expert_uid)
+        trace_expert_cache_event(
+            event_type="evict",
+            layer_idx=layer_idx,
+            evicted_experts=[expert_uid % self.expert_num_per_layer],
+            cache_load_size=self.load_size[layer_idx],
+            prefetch_size=self.prefetch_size,
+            expert_num=self.expert_num_per_layer,
+            device=device,
+            metadata={"expert_uid": int(expert_uid), "memory_slot": int(memory_slot)},
+        )
         return self.slots2layer[memory_slot]
 
     def get_expert_place(self, expert_idxs, layer_idx):
@@ -1061,17 +1120,37 @@ class KExpertsCache:
             return
         self.prefetching = True
         experts = self.score_aware_cache.get_experts_to_prefetch(next_layer, self.prefetch_size)
+        prefetch_experts = []
+        prefetch_resident_experts = []
+        issued_load_experts = []
         for idx, expert_idx in enumerate(experts):
             device = self.layer2device[next_layer]
+            expert_id = int(expert_idx.item())
+            prefetch_experts.append(expert_id)
             expert_uid = expert_idx.item() + next_layer * self.expert_num_per_layer #原版没有item，在prefetch时会出错
             self.fetchs[next_layer] = self.loaded_experts_idx[device][next_layer].keys()
             if not expert_uid in self.loaded_experts_idx[device][next_layer].keys():
+                issued_load_experts.append(expert_id)
                 self.load_expert_weights(
                     expert_uid,
                     non_blocking=True,
                     loading_lock=self.prefetch_lock[idx],
                     stream=self.prefetch_stream,
                 )
+            else:
+                prefetch_resident_experts.append(expert_id)
+        trace_expert_cache_event(
+            event_type="prefetch_issue",
+            layer_idx=layer_idx,
+            target_layer_idx=next_layer,
+            prefetch_experts=prefetch_experts,
+            prefetch_resident_experts=prefetch_resident_experts,
+            issued_load_experts=issued_load_experts,
+            cache_load_size=self.load_size[next_layer],
+            prefetch_size=self.prefetch_size,
+            expert_num=self.expert_num_per_layer,
+            device=self.layer2device.get(next_layer),
+        )
 
     def wait_prefetch(self):
         for lock in self.prefetch_lock:

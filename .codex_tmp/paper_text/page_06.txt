@@ -1,0 +1,192 @@
+32 128 512 1024 avg
+Prefill Length
+0.0
+0.5
+1.0
+1.5Prefill Latency (s)
+DeepSeek with 25% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0.0
+0.5
+1.0
+1.5Prefill Latency (s)
+DeepSeek with 50% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0.00
+0.25
+0.50
+0.75
+1.00Prefill Latency (s)
+DeepSeek with 75% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0
+2
+4
+6
+8Prefill Latency (s)
+Mixtral with 25% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0
+2
+4Prefill Latency (s)
+Mixtral with 50% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0
+1
+2
+3Prefill Latency (s)
+Mixtral with 75% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0
+2
+4Prefill Latency (s)
+Qwen2 with 25% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0
+1
+2
+3Prefill Latency (s)
+Qwen2 with 50% cache ratio
+32 128 512 1024 avg
+Prefill Length
+0
+1
+2Prefill Latency (s)
+Qwen2 with 75% cache ratio
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+llama.cpp AdapMoE KTransformers HybriMoE
+Fig. 7. Prefill stage performance comparison across different input lengths and cache ratios, highlighting relative speedups against kTransformers.
+25% 50% 75%
+Cached Expert Ratio
+0.00
+0.05
+0.10Decode Latency (s)
+Deepseek
+25% 50% 75%
+Cached Expert Ratio
+0.0
+0.1
+0.2
+0.3
+0.4Decode Latency (s)
+Mixtral
+25% 50% 75%
+Cached Expert Ratio
+0.00
+0.05
+0.10
+0.15
+0.20Decode Latency (s)
+Qwen2
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+1.0
+1.5
+2.0
+2.5
+Speedup
+llama.cpp AdapMoE KTransformers HybriMoE
+Fig. 8. Decode stage performance comparison across different cache ratios.
+30 40 50 60 70
+Cached Expert Percentage (%)
+30
+40
+50
+60
+70
+80
+90Cache Hit Rate (%)
+Mixtral-LRU
+Mixtral-MRS
+DeepSeek-LRU
+DeepSeek-MRS
+Qwen2-LRU
+Qwen2-MRS
+Fig. 9. Cache Hit Rate Comparison Between MRS and LRU Across Different
+Cached Expert Percentages.
+expert cache ratio for the two stages. The baseline is ktransformers
+framework. The results are illustrated in table III.
+D. Discussions
+1) Score-aware Cache Management Analysis: Figure 9 compares
+the cache hit rates of HybriMoE’s Minus Recent Score (MRS)
+strategy and the traditional Least Recently Used (LRU) strategy
+across three models under varying cached expert percentages. At 25%
+cache capacity, MRS outperforms LRU by 6% to 8%, with Mixtral
+improving from 30.2% to 36.2%, DeepSeek from 47.7% to 52.7%,
+and Qwen2 from 45.0% to 52.8%. As cache capacity increases to
+75%, the gap narrows (e.g., Mixtral: 83.3% vs. 80.6%), as higher
+capacities reduce expert competition, diminishing the relative impact
+of the caching strategy. These results highlight MRS’s effectiveness,
+particularly under limited cache settings.
+VII. CONCLUSION
+This paper presents HybriMoE, a hybrid CPU-GPU scheduling
+and cache management system designed to address the challenges of
+MoE inference, including dynamic expert activations and workload
+imbalances. By incorporating dynamic intra-layer scheduling, impact-
+driven prefetching, and score-aware caching, HybriMoE achieves
+efficient resource utilization and reduced latency. Experiments on
+various MoE models demonstrate that HybriMoE achieves an average
+speedup of 1.33x in prefill latency and 1.70x in decode latency com-
+pared to state-of-the-art methods. These results highlight HybriMoE’s
+effectiveness in optimizing hybrid MoE inference and its potential for
+scalable deployment on resource-constrained devices.
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

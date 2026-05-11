@@ -55,6 +55,7 @@ from transformers.utils import (
 )
 from transformers.utils.import_utils import is_torch_fx_available
 from .configuration_deepseek_v3 import DeepseekV3Config
+from ktransformers.util.router_trace import trace_router_assignments
 import torch.distributed as dist
 import numpy as np
 
@@ -391,7 +392,7 @@ class DeepseekV3MLP(nn.Module):
 
 
 class MoEGate(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, layer_idx=None):
         super().__init__()
         self.config = config
         self.top_k = config.num_experts_per_tok
@@ -402,6 +403,7 @@ class MoEGate(nn.Module):
         self.topk_method = config.topk_method
         self.n_group = config.n_group
         self.topk_group = config.topk_group
+        self.layer_idx = layer_idx
 
         # topk selection algorithm
         self.norm_topk_prob = config.norm_topk_prob
@@ -469,6 +471,17 @@ class MoEGate(nn.Module):
             denominator = topk_weight.sum(dim=-1, keepdim=True) + 1e-20
             topk_weight = topk_weight / denominator
         topk_weight = topk_weight * self.routed_scaling_factor # must multiply the scaling factor
+        trace_router_assignments(
+            model_type="deepseek_v3",
+            layer_idx=self.layer_idx,
+            topk_idx=topk_idx,
+            topk_weight=topk_weight,
+            num_experts=self.n_routed_experts,
+            batch_size=bsz,
+            sequence_length=seq_len,
+            top_k=self.top_k,
+            metadata={"topk_method": self.topk_method, "scoring_func": self.scoring_func},
+        )
 
         return topk_idx, topk_weight
 
@@ -477,9 +490,10 @@ class DeepseekV3MoE(nn.Module):
     A mixed expert module containing shared experts.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, layer_idx=None):
         super().__init__()
         self.config = config
+        self.layer_idx = layer_idx
         self.num_experts_per_tok = config.num_experts_per_tok
 
         if hasattr(config, "ep_size") and config.ep_size > 1:
@@ -512,7 +526,7 @@ class DeepseekV3MoE(nn.Module):
                     for i in range(config.n_routed_experts)
                 ]
             )
-        self.gate = MoEGate(config)
+        self.gate = MoEGate(config, layer_idx=layer_idx)
         if config.n_shared_experts is not None:
             intermediate_size = config.moe_intermediate_size * config.n_shared_experts
             self.shared_experts = DeepseekV3MLP(
@@ -1151,7 +1165,7 @@ class DeepseekV3DecoderLayer(nn.Module):
         )
 
         self.mlp = (
-            DeepseekV3MoE(config)
+            DeepseekV3MoE(config, layer_idx=layer_idx)
             if (
                 config.n_routed_experts is not None
                 and layer_idx >= config.first_k_dense_replace

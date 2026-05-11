@@ -1,0 +1,163 @@
+0 20 40 60 80 100
+Neuron/Expert Proportion (%)
+0
+20
+40
+60
+80
+100CDF (%)
+(a)
+Opt-Neuron
+Mixtral-Expert
+Deepseek-Expert
+0 10 20 30 40 50 60
+Expert
+0.05
+0.10
+0.15
+0.20
+0.25
+0.30Reuse probability
+(b)
+0 10 20 30 40 50
+Expert
+0
+2
+4
+6
+8
+10Workload
+(c)
+Q Prefill 128 M Prefill 128 M Decode 10
+Scenario
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0Time (ms)
+(d)
+llama.cpp
+adapmoe
+ktransformers
+0 1 2 3 4 5 6
+Expert Number
+0.0000
+0.0005
+0.0010
+0.0015
+0.0020
+0.0025
+0.0030Time (s)
+(e)
+CPU
+GPU
+0 200 400 600 800 1000
+Workload Size
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12Time (ms)
+(f)
+CPU
+GPU
+Fig. 3. (a) Cumulative activation frequency(CDF) for neurons and experts,
+(b) Reuse probability of experts by score, suggesting cache optimization
+opportunities, (c) Expert workload distribution of DeepSeek in a prefill
+forward, (d) Latency of prefill 128 tokens for Qwen2(Q), Mixtral(M) and
+decode 10 tokens for Mixtral with three existing methods, (e) CPU vs. GPU
+time for varying numbers of experts at fixed load, with CPU benefiting from
+overlapping computations. (f) CPU and GPU time across workload sizes.
+optimization: experts with higher activation scores are more likely to
+be reused in the next iteration as shown in Figure 3(b), suggesting
+that retaining high-score experts in cache can reduce access latency.
+Additionally, MoE models often exhibit high activation similarity
+between adjacent layers, which can be leveraged for prefetching.
+These MoE-specific optimizations provide a promising approach to
+reducing the challenges posed by the dynamic nature of expert
+activation.
+Challenge 2: Complexity of MoE Structure and Dynamic
+Scheduling. Minimizing latency in MoE inference requires maximiz-
+ing hardware utilization, but existing fixed-mapping methods often
+lead to load imbalances and underutilized resources. The scheduling
+complexity is further increased by the diverse structures of MoE
+models, with variations in shared expert usage, expert size and
+number, and runtime cache behavior. Additionally, uneven load distri-
+bution and variable execution order in the prefill stage make efficient
+scheduling even more challenging as shown in figure 3(c). Given
+the need for layer-by-layer adjustments, a static optimal solution is
+impractical, making real-time scheduling a significant challenge. As
+illustrated in figure 3(d), the performance of three existing strategies
+vary in different stages and models.
+Opportunity 2: MoE-specific scheduling rules. Despite the NP-
+Hard nature of the scheduling problem, in the specific context of
+MoE inference on CPU-GPU systems, several key observations can
+guide the design of efficient scheduling rules. First, expert transfer
+times remain relatively constant, simplifying decision-making. Ad-
+ditionally, GPU computation time scales linearly with the number
+of activated experts, while CPU computation benefits from overlap-
+ping memory access and computation due to its larger cache. As
+Gates
+E1 E2 E3 EN
+PCIE
+High-workload Expert Low-workload Expert
+Hybrid 
+Scheduling
+Core
+Core  Mem
+Impact-driven 
+Prefetching
+Score-aware
+Caching
+Model System
+MemCPU
+GPU
+Fig. 4. Overview of HybriMoE.
+shown in Figure 3(e), the first expert computation on the CPU is
+slower, but subsequent tasks are processed faster with better cache
+utilization. Similarly, Figure 3(f) shows that GPU time remains stable
+with increasing workload, whereas CPU time grows linearly with
+workload. Leveraging these patterns, predefined scheduling rules can
+help achieve efficient workload balancing for MoE models.
+IV. H YBRI MOE DESIGN
+A. Overview
+This paper introduces HybriMoE, a CPU-GPU hybrid scheduling
+system tailored for MoE inference on memory-limited devices. Hy-
+briMoE addresses the challenges of unbalanced hardware utilization
+caused by the dynamic activation patterns and structural complexity
+of MoE models. The system incorporates three key techniques: (i)
+an efficient hybrid scheduling algorithm that dynamically distributes
+workloads between GPUs and CPUs, (ii) a score-based expert caching
+strategy that prioritizes high-demand experts to minimize cache
+misses, and (iii) an impact-driven prefetching mechanism that pre-
+dicts and preloads high-demand experts, further enhancing resource
+utilization and reducing latency.
+Figure 4 illustrates the overview of HybriMoE. The system begins
+with a warmup phase to collect essential performance metrics, such as
+CPU and GPU processing speeds and data transfer latency. During
+inference, HybriMoE leverages this information to implement hy-
+brid CPU-GPU scheduling, score-aware caching, and impact-driven
+prefetching, ensuring efficient task execution and optimized resource
+usage throughout the inference process.
+B. Hybrid Scheduling Strategy
+The scheduling problem in MoE inference is inherently complex
+due to the dynamic nature of expert activation and the need to
+balance workloads across heterogeneous resources. To address these
+challenges, HybriMoE proposes a hybrid scheduling strategy that
+simplifies the task-to-hardware mapping by introducing three key
+priority rules:
+• GPU Priority: The GPU prioritizes the computation of cached
+experts, executing higher-load experts first.
+• CPU Priority: The CPU prioritizes the computation of uncached
+experts, focusing on lower-load tasks for efficient execution.
+Additionally, the CPU can process cached experts when the CPU
+is idle, following a low-to-high load order.
+• Transfer Priority : The CPU-GPU transfer mechanism priori-
+tizes the movement of high-load uncached experts from CPU to
+GPU to minimize computation delays.
+These rules constrain the ordering of experts on devices, simplify-
+ing the scheduling problem into an allocation problem:
+Authorized licensed use limited to: University of Electronic Science and Tech of China. Downloaded on March 08,2026 at 09:03:12 UTC from IEEE Xplore.  Restrictions apply. 

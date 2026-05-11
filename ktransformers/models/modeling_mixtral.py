@@ -64,6 +64,7 @@ from transformers.utils import (
 )
 from transformers.utils.import_utils import is_torch_fx_available
 from transformers.models.mixtral.configuration_mixtral import MixtralConfig
+from ktransformers.util.router_trace import trace_router_assignments
 
 
 if is_flash_attn_2_available():
@@ -830,8 +831,9 @@ class MixtralSparseMoeBlock(nn.Module):
     and memory on padding.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, layer_idx=None):
         super().__init__()
+        self.layer_idx = layer_idx
         self.hidden_dim = config.hidden_size
         self.ffn_dim = config.intermediate_size
         self.num_experts = config.num_local_experts
@@ -857,6 +859,17 @@ class MixtralSparseMoeBlock(nn.Module):
         routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
         routing_weights, selected_experts = torch.topk(routing_weights, self.top_k, dim=-1)
         routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
+        trace_router_assignments(
+            model_type="mixtral",
+            layer_idx=self.layer_idx,
+            topk_idx=selected_experts,
+            topk_weight=routing_weights,
+            num_experts=self.num_experts,
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            top_k=self.top_k,
+            metadata={"router_jitter_noise": self.jitter_noise},
+        )
         # we cast back to the input dtype
         routing_weights = routing_weights.to(hidden_states.dtype)
 
@@ -893,7 +906,7 @@ class MixtralDecoderLayer(nn.Module):
 
         self.self_attn = MIXTRAL_ATTENTION_CLASSES[config._attn_implementation](config, layer_idx)
 
-        self.block_sparse_moe = MixtralSparseMoeBlock(config)
+        self.block_sparse_moe = MixtralSparseMoeBlock(config, layer_idx=layer_idx)
         self.input_layernorm = MixtralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = MixtralRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
