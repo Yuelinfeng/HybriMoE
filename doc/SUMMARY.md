@@ -3,6 +3,7 @@
 [Introduction](./README.md)
 # Install
 - [Installation Guide](en/install.md)
+- [AutoDL HybriMoE Reproduction](zh/autodl_hybrimoe_repro_zh.md)
 
 # Tutorial 
 - [Deepseek-R1/V3 Show Case/Tutorial](en/DeepseekR1_V3_tutorial.md)
