@@ -19,6 +19,7 @@ STREAM_SEEDS="${STREAM_SEEDS:-0,1,2}"
 STREAM_GLOB="${STREAM_GLOB:-${PROMPT_SUITE_DIR}/streams/*.jsonl}"
 PROMPT_LIMIT="${PROMPT_LIMIT:-0}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-128}"
+DO_SAMPLE="${DO_SAMPLE:-0}"
 
 CACHE_SIZES="${CACHE_SIZES:-16 32 48 56}"
 PREFETCH_SIZES="${PREFETCH_SIZES:-0 4 8}"
@@ -74,6 +75,7 @@ echo "[prompt-stream] streams=${#STREAM_FILES[@]}"
 echo "[prompt-stream] cache_sizes=$CACHE_SIZES"
 echo "[prompt-stream] prefetch_sizes=$PREFETCH_SIZES"
 echo "[prompt-stream] prompt_limit=$PROMPT_LIMIT max_new_tokens=$MAX_NEW_TOKENS"
+echo "[prompt-stream] do_sample=$DO_SAMPLE"
 echo "[prompt-stream] python: $($PYTHON_BIN --version 2>&1)"
 
 run_one() {
@@ -103,6 +105,8 @@ run_one() {
   export HYBRIMOE_ROUTER_TRACE_DETAIL="${HYBRIMOE_ROUTER_TRACE_DETAIL:-summary}"
   export HYBRIMOE_EXPERT_TRACE=1
   export HYBRIMOE_EXPERT_TRACE_PATH="$expert_trace"
+  export HYBRIMOE_DO_SAMPLE="$DO_SAMPLE"
+  export HYBRIMOE_SAFE_SAMPLING="${HYBRIMOE_SAFE_SAMPLING:-1}"
 
   cat > "${out_root}/run_config.json" <<EOF
 {
@@ -117,6 +121,7 @@ run_one() {
   "prompt_stream": "$stream_file",
   "prompt_limit": $PROMPT_LIMIT,
   "max_new_tokens": $MAX_NEW_TOKENS,
+  "do_sample": $DO_SAMPLE,
   "router_trace": "$router_trace",
   "expert_trace": "$expert_trace",
   "generation_summary": "$generation_summary",
@@ -133,6 +138,7 @@ EOF
     --prefetch_size "$prefetch_size" \
     --optimize_config_path "$OPTIMIZE_CONFIG_PATH" \
     --max_new_tokens "$MAX_NEW_TOKENS" \
+    --do_sample "$DO_SAMPLE" \
     --prompt_stream "$stream_file" \
     --prompt_limit "$PROMPT_LIMIT" \
     --stream_output "$generation_summary"

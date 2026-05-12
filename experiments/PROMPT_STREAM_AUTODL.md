@@ -38,6 +38,7 @@ CACHE_SIZES='56' \
 PREFETCH_SIZES='8' \
 PROMPT_LIMIT=10 \
 MAX_NEW_TOKENS=64 \
+DO_SAMPLE=0 \
 GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
 bash experiments/run_prompt_stream_autodl.sh
 ```
@@ -55,9 +56,15 @@ CACHE_SIZES='16 32 48 56' \
 PREFETCH_SIZES='0 4 8' \
 PROMPT_LIMIT=0 \
 MAX_NEW_TOKENS=128 \
+DO_SAMPLE=0 \
 GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
 bash experiments/run_prompt_stream_autodl.sh
 ```
+
+`DO_SAMPLE=0` is intentional for measurement runs. It uses deterministic greedy
+decode and avoids CUDA-side crashes from invalid sampling probabilities. The
+trace claim depends on router/cache behavior under a prompt stream, not on
+sampling diversity.
 
 To reduce cost, narrow the stream glob first:
 

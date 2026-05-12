@@ -105,6 +105,7 @@ def _run_generation(
     mode: str,
     force_think: bool,
     chunk_prefill_size: int,
+    do_sample: bool | None,
 ):
     if mode == "long_context":
         assert Config().long_context_config["max_seq_len"] > input_tensor.shape[1] + max_new_tokens, (
@@ -132,6 +133,7 @@ def _run_generation(
             head_dim_ckv=config.kv_lora_rank,
             head_dim_kpe=config.qk_rope_head_dim,
             q_head_dim=config.qk_rope_head_dim + config.qk_nope_head_dim,
+            do_sample=do_sample,
         )
     return prefill_and_generate(
         model,
@@ -142,6 +144,7 @@ def _run_generation(
         mode=mode,
         force_think=force_think,
         chunk_prefill_size=chunk_prefill_size,
+        do_sample=do_sample,
     )
 
 
@@ -176,6 +179,7 @@ def local_chat(
     prompt_stream: str | None = None,
     prompt_limit: int = 0,
     stream_output: str | None = None,
+    do_sample: bool | None = None,
 ):
 
     torch.set_grad_enabled(False)
@@ -283,6 +287,7 @@ def local_chat(
                         mode=mode,
                         force_think=force_think,
                         chunk_prefill_size=chunk_prefill_size,
+                        do_sample=do_sample,
                     )
                 if output_fh:
                     output_fh.write(
@@ -331,6 +336,7 @@ def local_chat(
             mode=mode,
             force_think=force_think,
             chunk_prefill_size=chunk_prefill_size,
+            do_sample=do_sample,
         )
 
 
@@ -346,6 +352,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_stream", type=str, default=None)
     parser.add_argument("--prompt_limit", type=int, default=0)
     parser.add_argument("--stream_output", type=str, default=None)
+    parser.add_argument("--do_sample", type=int, choices=[0, 1], default=None)
     args = parser.parse_args()
     local_chat(
         model_path=args.model_path,
@@ -358,4 +365,5 @@ if __name__ == "__main__":
         prompt_stream=args.prompt_stream,
         prompt_limit=args.prompt_limit,
         stream_output=args.stream_output,
+        do_sample=None if args.do_sample is None else bool(args.do_sample),
     )

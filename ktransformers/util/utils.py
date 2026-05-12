@@ -111,7 +111,8 @@ def load_weights(module:nn.Module, gguf_loader:GGUFLoader, prefix=''):
 
 def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cuda_graph: bool = True,
                          mode = 'normal', force_think: bool = False, chunk_prefill_size = 16384, use_flashinfer_mla = False,
-                         num_heads = None, head_dim_ckv = None, head_dim_kpe = None, q_head_dim = None):
+                         num_heads = None, head_dim_ckv = None, head_dim_kpe = None, q_head_dim = None,
+                         do_sample = None):
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     torch._dynamo.config.suppress_errors = True
@@ -124,6 +125,27 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
 
     tokens = []
     
+    if do_sample is None:
+        do_sample = os.environ.get("HYBRIMOE_DO_SAMPLE", "1").strip().lower() in {"1", "true", "yes", "on"}
+    safe_sampling = os.environ.get("HYBRIMOE_SAFE_SAMPLING", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+    def select_next_token(next_token_scores, generation_config):
+        scores = next_token_scores
+        if safe_sampling:
+            scores = torch.nan_to_num(scores.float(), nan=-1e9, posinf=1e9, neginf=-1e9)
+        if generation_config.do_sample:
+            probs = nn.functional.softmax(scores, dim=-1)
+            if safe_sampling:
+                probs_ok = (
+                    torch.isfinite(probs).all()
+                    and (probs >= 0).all()
+                    and (probs.sum(dim=-1) > 0).all()
+                )
+                if not bool(probs_ok.item()):
+                    return torch.argmax(scores, dim=-1)
+            return torch.multinomial(probs, num_samples=1).squeeze(1)
+        return torch.argmax(scores, dim=-1)
+
     def decode_one_tokens(cuda_graph_runner, cur_token, position_ids, cache_position, past_key_values, logits_warper, generation_config, use_cuda_graph: bool = True):
         if cuda_graph_runner is None:
             use_cuda_graph = False
@@ -145,11 +167,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             torch.cuda.synchronize(device)
         #print(logits)
         next_token_scores = logits_warper(inputs, logits[:, -1, :])
-        if generation_config.do_sample:
-            probs = nn.functional.softmax(next_token_scores, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
-        else:
-            next_token = torch.argmax(next_token_scores, dim=-1)
+        next_token = select_next_token(next_token_scores, generation_config)
         return next_token
     
     # TODO: use CUDA Graph for chunk prefill, may get small improvement
@@ -180,7 +198,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             past_key_values = None
         
         generation_config, model_kwargs = model._prepare_generation_config(
-            None, do_sample=True
+            None, do_sample=bool(do_sample)
             # change this to modify generate config
             #top_k=5, top_p=0.85, temperature=0.1
         )
@@ -209,11 +227,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             chunk_start += chunk_prefill_size
 
         next_token_scores = logits_warper(inputs, logits[:, -1, :])
-        if generation_config.do_sample:
-            probs = nn.functional.softmax(next_token_scores, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
-        else:
-            next_token = torch.argmax(next_token_scores, dim=-1)
+        next_token = select_next_token(next_token_scores, generation_config)
 
         first_token_time = time.time() - start_time
         
