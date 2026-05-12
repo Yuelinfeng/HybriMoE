@@ -106,6 +106,10 @@ def _run_generation(
     force_think: bool,
     chunk_prefill_size: int,
     do_sample: bool | None,
+    fixed_decode_tokens: bool | None,
+    temperature: float | None,
+    top_p: float | None,
+    top_k: int | None,
 ):
     if mode == "long_context":
         assert Config().long_context_config["max_seq_len"] > input_tensor.shape[1] + max_new_tokens, (
@@ -134,6 +138,10 @@ def _run_generation(
             head_dim_kpe=config.qk_rope_head_dim,
             q_head_dim=config.qk_rope_head_dim + config.qk_nope_head_dim,
             do_sample=do_sample,
+            fixed_decode_tokens=fixed_decode_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
         )
     return prefill_and_generate(
         model,
@@ -145,10 +153,25 @@ def _run_generation(
         force_think=force_think,
         chunk_prefill_size=chunk_prefill_size,
         do_sample=do_sample,
+        fixed_decode_tokens=fixed_decode_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
     )
 
 
-def _stream_metadata(record: dict, index: int, input_tokens: int, max_new_tokens: int) -> dict:
+def _stream_metadata(
+    record: dict,
+    index: int,
+    input_tokens: int,
+    max_new_tokens: int,
+    *,
+    do_sample: bool | None,
+    fixed_decode_tokens: bool | None,
+    temperature: float | None,
+    top_p: float | None,
+    top_k: int | None,
+) -> dict:
     return {
         "prompt_id": record.get("prompt_id", f"prompt_{index:06d}"),
         "prompt_index": index,
@@ -160,7 +183,22 @@ def _stream_metadata(record: dict, index: int, input_tokens: int, max_new_tokens
         "seed": record.get("seed"),
         "input_tokens": input_tokens,
         "max_new_tokens": max_new_tokens,
+        "do_sample": do_sample,
+        "fixed_decode_tokens": fixed_decode_tokens,
+        "temperature": temperature,
+        "top_p": top_p,
+        "top_k": top_k,
     }
+
+
+def _set_generation_seed(record: dict, index: int) -> None:
+    raw_seed = record.get("generation_seed", record.get("seed"))
+    if raw_seed is None:
+        return
+    seed = int(raw_seed) * 1000003 + int(index)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def local_chat(
@@ -180,6 +218,11 @@ def local_chat(
     prompt_limit: int = 0,
     stream_output: str | None = None,
     do_sample: bool | None = None,
+    fixed_decode_tokens: bool | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
+    override_stream_max_new_tokens: bool = False,
 ):
 
     torch.set_grad_enabled(False)
@@ -266,9 +309,21 @@ def local_chat(
         try:
             for index, record in enumerate(prompt_records):
                 content = str(record.get("prompt") or record.get("content"))
-                prompt_max_new_tokens = int(record.get("max_new_tokens", max_new_tokens))
+                prompt_max_new_tokens = int(
+                    max_new_tokens if override_stream_max_new_tokens else record.get("max_new_tokens", max_new_tokens)
+                )
                 input_tensor = _build_input_tensor(tokenizer, content, force_think)
-                metadata = _stream_metadata(record, index, int(input_tensor.shape[1]), prompt_max_new_tokens)
+                metadata = _stream_metadata(
+                    record,
+                    index,
+                    int(input_tensor.shape[1]),
+                    prompt_max_new_tokens,
+                    do_sample=do_sample,
+                    fixed_decode_tokens=fixed_decode_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                )
                 print(
                     f"\n[hybrimoe-stream] {index + 1}/{len(prompt_records)} "
                     f"prompt_id={metadata['prompt_id']} category={metadata['prompt_category']} "
@@ -276,6 +331,7 @@ def local_chat(
                     flush=True,
                 )
                 wall_start = time.time()
+                _set_generation_seed(record, index)
                 with trace_context(metadata):
                     tokens, prefill_time, tokens_generated, decode_time = _run_generation(
                         model=model,
@@ -288,6 +344,10 @@ def local_chat(
                         force_think=force_think,
                         chunk_prefill_size=chunk_prefill_size,
                         do_sample=do_sample,
+                        fixed_decode_tokens=fixed_decode_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
                     )
                 if output_fh:
                     output_fh.write(
@@ -298,7 +358,7 @@ def local_chat(
                                 "prefill_time_s": prefill_time,
                                 "decode_time_s": decode_time,
                                 "tokens_generated": tokens_generated,
-                                "generated_text": tokenizer.decode(tokens, skip_special_tokens=False),
+                                "generated_text": tokenizer.decode(tokens, skip_special_tokens=True),
                             },
                             ensure_ascii=False,
                             separators=(",", ":"),
@@ -324,6 +384,11 @@ def local_chat(
         "workload_phase": "single",
         "input_tokens": int(input_tensor.shape[1]),
         "max_new_tokens": int(max_new_tokens),
+        "do_sample": do_sample,
+        "fixed_decode_tokens": fixed_decode_tokens,
+        "temperature": temperature,
+        "top_p": top_p,
+        "top_k": top_k,
     }
     with trace_context(metadata):
         _run_generation(
@@ -337,6 +402,10 @@ def local_chat(
             force_think=force_think,
             chunk_prefill_size=chunk_prefill_size,
             do_sample=do_sample,
+            fixed_decode_tokens=fixed_decode_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
         )
 
 
@@ -353,6 +422,11 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_limit", type=int, default=0)
     parser.add_argument("--stream_output", type=str, default=None)
     parser.add_argument("--do_sample", type=int, choices=[0, 1], default=None)
+    parser.add_argument("--fixed_decode_tokens", type=int, choices=[0, 1], default=None)
+    parser.add_argument("--temperature", type=float, default=None)
+    parser.add_argument("--top_p", type=float, default=None)
+    parser.add_argument("--top_k", type=int, default=None)
+    parser.add_argument("--override_stream_max_new_tokens", type=int, choices=[0, 1], default=0)
     args = parser.parse_args()
     local_chat(
         model_path=args.model_path,
@@ -366,4 +440,9 @@ if __name__ == "__main__":
         prompt_limit=args.prompt_limit,
         stream_output=args.stream_output,
         do_sample=None if args.do_sample is None else bool(args.do_sample),
+        fixed_decode_tokens=None if args.fixed_decode_tokens is None else bool(args.fixed_decode_tokens),
+        temperature=args.temperature,
+        top_p=args.top_p,
+        top_k=args.top_k,
+        override_stream_max_new_tokens=bool(args.override_stream_max_new_tokens),
     )

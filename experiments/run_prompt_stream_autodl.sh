@@ -19,7 +19,12 @@ STREAM_SEEDS="${STREAM_SEEDS:-0,1,2}"
 STREAM_GLOB="${STREAM_GLOB:-${PROMPT_SUITE_DIR}/streams/*.jsonl}"
 PROMPT_LIMIT="${PROMPT_LIMIT:-0}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-128}"
-DO_SAMPLE="${DO_SAMPLE:-0}"
+DO_SAMPLE="${DO_SAMPLE:-1}"
+FIXED_DECODE_TOKENS="${FIXED_DECODE_TOKENS:-1}"
+TEMPERATURE="${TEMPERATURE:-0.6}"
+TOP_P="${TOP_P:-0.9}"
+TOP_K="${TOP_K:-50}"
+OVERRIDE_STREAM_MAX_NEW_TOKENS="${OVERRIDE_STREAM_MAX_NEW_TOKENS:-1}"
 
 CACHE_SIZES="${CACHE_SIZES:-16 32 48 56}"
 PREFETCH_SIZES="${PREFETCH_SIZES:-0 4 8}"
@@ -76,6 +81,8 @@ echo "[prompt-stream] cache_sizes=$CACHE_SIZES"
 echo "[prompt-stream] prefetch_sizes=$PREFETCH_SIZES"
 echo "[prompt-stream] prompt_limit=$PROMPT_LIMIT max_new_tokens=$MAX_NEW_TOKENS"
 echo "[prompt-stream] do_sample=$DO_SAMPLE"
+echo "[prompt-stream] fixed_decode_tokens=$FIXED_DECODE_TOKENS temperature=$TEMPERATURE top_p=$TOP_P top_k=$TOP_K"
+echo "[prompt-stream] override_stream_max_new_tokens=$OVERRIDE_STREAM_MAX_NEW_TOKENS"
 echo "[prompt-stream] python: $($PYTHON_BIN --version 2>&1)"
 
 run_one() {
@@ -106,6 +113,10 @@ run_one() {
   export HYBRIMOE_EXPERT_TRACE=1
   export HYBRIMOE_EXPERT_TRACE_PATH="$expert_trace"
   export HYBRIMOE_DO_SAMPLE="$DO_SAMPLE"
+  export HYBRIMOE_FIXED_DECODE_TOKENS="$FIXED_DECODE_TOKENS"
+  export HYBRIMOE_TEMPERATURE="$TEMPERATURE"
+  export HYBRIMOE_TOP_P="$TOP_P"
+  export HYBRIMOE_TOP_K="$TOP_K"
   export HYBRIMOE_SAFE_SAMPLING="${HYBRIMOE_SAFE_SAMPLING:-1}"
 
   cat > "${out_root}/run_config.json" <<EOF
@@ -122,6 +133,11 @@ run_one() {
   "prompt_limit": $PROMPT_LIMIT,
   "max_new_tokens": $MAX_NEW_TOKENS,
   "do_sample": $DO_SAMPLE,
+  "fixed_decode_tokens": $FIXED_DECODE_TOKENS,
+  "temperature": $TEMPERATURE,
+  "top_p": $TOP_P,
+  "top_k": $TOP_K,
+  "override_stream_max_new_tokens": $OVERRIDE_STREAM_MAX_NEW_TOKENS,
   "router_trace": "$router_trace",
   "expert_trace": "$expert_trace",
   "generation_summary": "$generation_summary",
@@ -139,6 +155,11 @@ EOF
     --optimize_config_path "$OPTIMIZE_CONFIG_PATH" \
     --max_new_tokens "$MAX_NEW_TOKENS" \
     --do_sample "$DO_SAMPLE" \
+    --fixed_decode_tokens "$FIXED_DECODE_TOKENS" \
+    --temperature "$TEMPERATURE" \
+    --top_p "$TOP_P" \
+    --top_k "$TOP_K" \
+    --override_stream_max_new_tokens "$OVERRIDE_STREAM_MAX_NEW_TOKENS" \
     --prompt_stream "$stream_file" \
     --prompt_limit "$PROMPT_LIMIT" \
     --stream_output "$generation_summary"

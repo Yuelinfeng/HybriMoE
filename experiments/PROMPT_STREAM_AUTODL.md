@@ -38,7 +38,13 @@ CACHE_SIZES='56' \
 PREFETCH_SIZES='8' \
 PROMPT_LIMIT=10 \
 MAX_NEW_TOKENS=64 \
-DO_SAMPLE=0 \
+FIXED_DECODE_TOKENS=1 \
+DO_SAMPLE=1 \
+TEMPERATURE=0.6 \
+TOP_P=0.9 \
+TOP_K=50 \
+OVERRIDE_STREAM_MAX_NEW_TOKENS=1 \
+HYBRIMOE_SAFE_SAMPLING=1 \
 GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
 bash experiments/run_prompt_stream_autodl.sh
 ```
@@ -56,15 +62,37 @@ CACHE_SIZES='16 32 48 56' \
 PREFETCH_SIZES='0 4 8' \
 PROMPT_LIMIT=0 \
 MAX_NEW_TOKENS=128 \
-DO_SAMPLE=0 \
+FIXED_DECODE_TOKENS=1 \
+DO_SAMPLE=1 \
+TEMPERATURE=0.6 \
+TOP_P=0.9 \
+TOP_K=50 \
+OVERRIDE_STREAM_MAX_NEW_TOKENS=1 \
+HYBRIMOE_SAFE_SAMPLING=1 \
 GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
 bash experiments/run_prompt_stream_autodl.sh
 ```
 
-`DO_SAMPLE=0` is intentional for measurement runs. It uses deterministic greedy
-decode and avoids CUDA-side crashes from invalid sampling probabilities. The
-trace claim depends on router/cache behavior under a prompt stream, not on
-sampling diversity.
+`FIXED_DECODE_TOKENS=1` suppresses EOS until the final decode step, so each
+prompt contributes exactly `MAX_NEW_TOKENS` decode tokens unless the process
+fails. `DO_SAMPLE=1` with low temperature/top-p gives more realistic output
+than greedy decode, while `HYBRIMOE_SAFE_SAMPLING=1` falls back safely if a
+quantized run produces invalid sampling probabilities.
+
+`OVERRIDE_STREAM_MAX_NEW_TOKENS=1` makes the runner's `MAX_NEW_TOKENS` override
+any older `max_new_tokens` values stored in a previously generated prompt suite.
+
+For the strictest deterministic measurement, use:
+
+```bash
+DO_SAMPLE=0
+```
+
+For better qualitative outputs, use:
+
+```bash
+DO_SAMPLE=1 TEMPERATURE=0.6 TOP_P=0.9 TOP_K=50
+```
 
 To reduce cost, narrow the stream glob first:
 

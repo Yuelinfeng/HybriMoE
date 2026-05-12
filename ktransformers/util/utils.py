@@ -112,7 +112,8 @@ def load_weights(module:nn.Module, gguf_loader:GGUFLoader, prefix=''):
 def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cuda_graph: bool = True,
                          mode = 'normal', force_think: bool = False, chunk_prefill_size = 16384, use_flashinfer_mla = False,
                          num_heads = None, head_dim_ckv = None, head_dim_kpe = None, q_head_dim = None,
-                         do_sample = None):
+                         do_sample = None, fixed_decode_tokens = None,
+                         temperature = None, top_p = None, top_k = None):
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     torch._dynamo.config.suppress_errors = True
@@ -127,12 +128,48 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
     
     if do_sample is None:
         do_sample = os.environ.get("HYBRIMOE_DO_SAMPLE", "1").strip().lower() in {"1", "true", "yes", "on"}
+    if fixed_decode_tokens is None:
+        fixed_decode_tokens = os.environ.get("HYBRIMOE_FIXED_DECODE_TOKENS", "0").strip().lower() in {"1", "true", "yes", "on"}
+    if temperature is None and os.environ.get("HYBRIMOE_TEMPERATURE"):
+        temperature = float(os.environ["HYBRIMOE_TEMPERATURE"])
+    if top_p is None and os.environ.get("HYBRIMOE_TOP_P"):
+        top_p = float(os.environ["HYBRIMOE_TOP_P"])
+    if top_k is None and os.environ.get("HYBRIMOE_TOP_K"):
+        top_k = int(os.environ["HYBRIMOE_TOP_K"])
     safe_sampling = os.environ.get("HYBRIMOE_SAFE_SAMPLING", "1").strip().lower() in {"1", "true", "yes", "on"}
 
-    def select_next_token(next_token_scores, generation_config):
+    eos_token_ids = set()
+    for candidate in (getattr(tokenizer, "eos_token_id", None), getattr(model.generation_config, "eos_token_id", None)):
+        if isinstance(candidate, (list, tuple, set)):
+            eos_token_ids.update(int(item) for item in candidate if item is not None)
+        elif candidate is not None:
+            eos_token_ids.add(int(candidate))
+    try:
+        im_end_ids = tokenizer.encode("<|im_end|>", add_special_tokens=False)
+        if len(im_end_ids) == 1:
+            eos_token_ids.add(int(im_end_ids[0]))
+    except Exception:
+        pass
+
+    def is_eos_token(token) -> bool:
+        token_id = int(token[0].item()) if hasattr(token, "shape") and token.numel() else int(token)
+        if token_id in eos_token_ids:
+            return True
+        try:
+            return tokenizer.decode([token_id]) == "<|im_end|>"
+        except Exception:
+            return False
+
+    def select_next_token(next_token_scores, generation_config, *, suppress_eos: bool = False):
         scores = next_token_scores
         if safe_sampling:
             scores = torch.nan_to_num(scores.float(), nan=-1e9, posinf=1e9, neginf=-1e9)
+        if suppress_eos and eos_token_ids:
+            scores = scores.clone()
+            vocab_size = scores.shape[-1]
+            for eos_id in eos_token_ids:
+                if 0 <= eos_id < vocab_size:
+                    scores[:, eos_id] = -1e9
         if generation_config.do_sample:
             probs = nn.functional.softmax(scores, dim=-1)
             if safe_sampling:
@@ -146,7 +183,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             return torch.multinomial(probs, num_samples=1).squeeze(1)
         return torch.argmax(scores, dim=-1)
 
-    def decode_one_tokens(cuda_graph_runner, cur_token, position_ids, cache_position, past_key_values, logits_warper, generation_config, use_cuda_graph: bool = True):
+    def decode_one_tokens(cuda_graph_runner, cur_token, position_ids, cache_position, past_key_values, logits_warper, generation_config, use_cuda_graph: bool = True, suppress_eos: bool = False):
         if cuda_graph_runner is None:
             use_cuda_graph = False
         if use_cuda_graph:
@@ -167,7 +204,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             torch.cuda.synchronize(device)
         #print(logits)
         next_token_scores = logits_warper(inputs, logits[:, -1, :])
-        next_token = select_next_token(next_token_scores, generation_config)
+        next_token = select_next_token(next_token_scores, generation_config, suppress_eos=suppress_eos)
         return next_token
     
     # TODO: use CUDA Graph for chunk prefill, may get small improvement
@@ -202,6 +239,13 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             # change this to modify generate config
             #top_k=5, top_p=0.85, temperature=0.1
         )
+        generation_config.do_sample = bool(do_sample)
+        if temperature is not None:
+            generation_config.temperature = float(temperature)
+        if top_p is not None:
+            generation_config.top_p = float(top_p)
+        if top_k is not None:
+            generation_config.top_k = int(top_k)
         try: # transformers==4.43
             logits_warper = (
                 model._get_logits_warper(generation_config,device=inputs.device)
@@ -227,7 +271,11 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             chunk_start += chunk_prefill_size
 
         next_token_scores = logits_warper(inputs, logits[:, -1, :])
-        next_token = select_next_token(next_token_scores, generation_config)
+        next_token = select_next_token(
+            next_token_scores,
+            generation_config,
+            suppress_eos=bool(fixed_decode_tokens and max_new_tokens > 1),
+        )
 
         first_token_time = time.time() - start_time
         
@@ -259,13 +307,23 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
                 warm_uped = True
                 cuda_graph_runner = CUDAGraphRunner()
                 cuda_graph_runner.capture(model, next_token.unsqueeze(0), position_ids, cache_position, past_key_values, torch_device, return_dict=False, use_cache=True)
-            next_token = decode_one_tokens(cuda_graph_runner, next_token.unsqueeze(0), position_ids, cache_position, past_key_values, logits_warper, generation_config, use_cuda_graph).to(torch_device)
+            next_token = decode_one_tokens(
+                cuda_graph_runner,
+                next_token.unsqueeze(0),
+                position_ids,
+                cache_position,
+                past_key_values,
+                logits_warper,
+                generation_config,
+                use_cuda_graph,
+                suppress_eos=bool(fixed_decode_tokens and i < max_new_tokens - 1),
+            ).to(torch_device)
             inputs = torch.cat((inputs, next_token.unsqueeze(0)), dim=-1)
             generated_ids[:, cache_position] = next_token.int()
             tokens.append(int(next_token))
             seq_length += 1
             
-            if next_token[0].item() == tokenizer.eos_token_id or tokenizer.decode(next_token.tolist()) == '<|im_end|>':
+            if not fixed_decode_tokens and is_eos_token(next_token):
                 print(stream.end(), end="", flush=True)
                 break
             else:
