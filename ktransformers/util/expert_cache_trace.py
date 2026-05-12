@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ktransformers.util.trace_context import get_trace_context
+
 
 def _env_flag(name: str, default: bool = False) -> bool:
     value = os.environ.get(name)
@@ -158,8 +160,11 @@ class ExpertCacheTraceRecorder:
             payload["prefetch_size"] = int(prefetch_size)
         if expert_num is not None:
             payload["expert_num"] = int(expert_num)
+        merged_metadata = get_trace_context()
         if metadata:
-            payload["metadata"] = metadata
+            merged_metadata.update(metadata)
+        if merged_metadata:
+            payload["metadata"] = merged_metadata
 
         if selected or resident_hits or resident_misses or gpu or cpu:
             selected_total = len(resident_hits) + len(resident_misses)

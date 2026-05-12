@@ -11,6 +11,8 @@ from typing import Any
 
 import torch
 
+from ktransformers.util.trace_context import get_trace_context
+
 
 def _env_flag(name: str, default: bool = False) -> bool:
     value = os.environ.get(name)
@@ -77,8 +79,11 @@ class RouterTraceRecorder:
             "expert_counts": expert_counts,
             "top_experts": top_experts,
         }
+        merged_metadata = get_trace_context()
         if metadata:
-            payload["metadata"] = metadata
+            merged_metadata.update(metadata)
+        if merged_metadata:
+            payload["metadata"] = merged_metadata
 
         if topk_weight is not None:
             weight_cpu = topk_weight.detach().to("cpu", dtype=torch.float32)
