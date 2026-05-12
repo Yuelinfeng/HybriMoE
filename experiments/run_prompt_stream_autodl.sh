@@ -18,13 +18,15 @@ STREAM_LENGTH="${STREAM_LENGTH:-100}"
 STREAM_SEEDS="${STREAM_SEEDS:-0,1,2}"
 STREAM_GLOB="${STREAM_GLOB:-${PROMPT_SUITE_DIR}/streams/*.jsonl}"
 PROMPT_LIMIT="${PROMPT_LIMIT:-0}"
-MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-128}"
+MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-160}"
 DO_SAMPLE="${DO_SAMPLE:-1}"
-FIXED_DECODE_TOKENS="${FIXED_DECODE_TOKENS:-1}"
-TEMPERATURE="${TEMPERATURE:-0.6}"
-TOP_P="${TOP_P:-0.9}"
-TOP_K="${TOP_K:-50}"
+FIXED_DECODE_TOKENS="${FIXED_DECODE_TOKENS:-0}"
+MIN_NEW_TOKENS="${MIN_NEW_TOKENS:-0}"
+TEMPERATURE="${TEMPERATURE:-0.2}"
+TOP_P="${TOP_P:-0.75}"
+TOP_K="${TOP_K:-10}"
 OVERRIDE_STREAM_MAX_NEW_TOKENS="${OVERRIDE_STREAM_MAX_NEW_TOKENS:-1}"
+ANALYSIS_DECODE_WINDOW="${ANALYSIS_DECODE_WINDOW:-128}"
 
 CACHE_SIZES="${CACHE_SIZES:-16 32 48 56}"
 PREFETCH_SIZES="${PREFETCH_SIZES:-0 4 8}"
@@ -82,7 +84,9 @@ echo "[prompt-stream] prefetch_sizes=$PREFETCH_SIZES"
 echo "[prompt-stream] prompt_limit=$PROMPT_LIMIT max_new_tokens=$MAX_NEW_TOKENS"
 echo "[prompt-stream] do_sample=$DO_SAMPLE"
 echo "[prompt-stream] fixed_decode_tokens=$FIXED_DECODE_TOKENS temperature=$TEMPERATURE top_p=$TOP_P top_k=$TOP_K"
+echo "[prompt-stream] min_new_tokens=$MIN_NEW_TOKENS"
 echo "[prompt-stream] override_stream_max_new_tokens=$OVERRIDE_STREAM_MAX_NEW_TOKENS"
+echo "[prompt-stream] analysis_decode_window=$ANALYSIS_DECODE_WINDOW"
 echo "[prompt-stream] python: $($PYTHON_BIN --version 2>&1)"
 
 run_one() {
@@ -114,6 +118,7 @@ run_one() {
   export HYBRIMOE_EXPERT_TRACE_PATH="$expert_trace"
   export HYBRIMOE_DO_SAMPLE="$DO_SAMPLE"
   export HYBRIMOE_FIXED_DECODE_TOKENS="$FIXED_DECODE_TOKENS"
+  export HYBRIMOE_MIN_NEW_TOKENS="$MIN_NEW_TOKENS"
   export HYBRIMOE_TEMPERATURE="$TEMPERATURE"
   export HYBRIMOE_TOP_P="$TOP_P"
   export HYBRIMOE_TOP_K="$TOP_K"
@@ -134,10 +139,12 @@ run_one() {
   "max_new_tokens": $MAX_NEW_TOKENS,
   "do_sample": $DO_SAMPLE,
   "fixed_decode_tokens": $FIXED_DECODE_TOKENS,
+  "min_new_tokens": $MIN_NEW_TOKENS,
   "temperature": $TEMPERATURE,
   "top_p": $TOP_P,
   "top_k": $TOP_K,
   "override_stream_max_new_tokens": $OVERRIDE_STREAM_MAX_NEW_TOKENS,
+  "analysis_decode_window": $ANALYSIS_DECODE_WINDOW,
   "router_trace": "$router_trace",
   "expert_trace": "$expert_trace",
   "generation_summary": "$generation_summary",
@@ -156,6 +163,7 @@ EOF
     --max_new_tokens "$MAX_NEW_TOKENS" \
     --do_sample "$DO_SAMPLE" \
     --fixed_decode_tokens "$FIXED_DECODE_TOKENS" \
+    --min_new_tokens "$MIN_NEW_TOKENS" \
     --temperature "$TEMPERATURE" \
     --top_p "$TOP_P" \
     --top_k "$TOP_K" \
@@ -209,7 +217,8 @@ done
 "$PYTHON_BIN" experiments/analyze_prompt_stream_mechanisms.py \
   --input-root "$OUT_BASE" \
   --output-dir "${OUT_BASE}/aggregate_analysis" \
-  --stage "$EXPERT_STAGE" || true
+  --stage "$EXPERT_STAGE" \
+  --decode-window "$ANALYSIS_DECODE_WINDOW" || true
 
 tar -C "$OUT_BASE" -cf "${OUT_BASE}/aggregate_analysis.tar" aggregate_analysis 2>/dev/null || true
 

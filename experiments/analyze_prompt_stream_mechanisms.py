@@ -40,6 +40,10 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return events
 
 
+def event_sort_key(payload: dict[str, Any]) -> tuple[int, int]:
+    return int(payload.get("time_ns", 0)), int(payload.get("event_id", 0))
+
+
 def stage_ok(payload: dict[str, Any], stage: str) -> bool:
     return stage == "all" or payload.get("stage") == stage
 
@@ -52,6 +56,85 @@ def metadata(payload: dict[str, Any]) -> dict[str, Any]:
 def prompt_scope(payload: dict[str, Any]) -> tuple[str, str]:
     meta = metadata(payload)
     return (str(meta.get("stream_id", "unknown")), str(meta.get("prompt_id", "unknown")))
+
+
+def filter_expert_decode_window(
+    events: list[dict[str, Any]],
+    *,
+    stage: str,
+    decode_window: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if decode_window <= 0 or stage != "decode":
+        return events, {"decode_window": 0, "windowed_prompt_count": 0, "short_prompt_count": 0}
+
+    placements_by_prompt: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for event in events:
+        if event.get("event_type") == "placement" and event.get("stage") == "decode":
+            placements_by_prompt[prompt_scope(event)].append(event)
+
+    cutoff_by_prompt: dict[tuple[str, str], tuple[int, int]] = {}
+    short_prompt_count = 0
+    for scope, placements in placements_by_prompt.items():
+        layers = {event.get("layer_idx") for event in placements if event.get("layer_idx") is not None}
+        layers_per_token = max(1, len(layers))
+        target_events = decode_window * layers_per_token
+        if len(placements) < target_events:
+            short_prompt_count += 1
+            continue
+        cutoff_by_prompt[scope] = event_sort_key(placements[target_events - 1])
+
+    if not cutoff_by_prompt:
+        return events, {
+            "decode_window": decode_window,
+            "windowed_prompt_count": 0,
+            "short_prompt_count": short_prompt_count,
+        }
+
+    filtered = []
+    for event in events:
+        scope = prompt_scope(event)
+        cutoff = cutoff_by_prompt.get(scope)
+        if cutoff is None:
+            filtered.append(event)
+        elif event_sort_key(event) <= cutoff:
+            filtered.append(event)
+
+    return filtered, {
+        "decode_window": decode_window,
+        "windowed_prompt_count": len(cutoff_by_prompt),
+        "short_prompt_count": short_prompt_count,
+    }
+
+
+def filter_router_decode_window(
+    events: list[dict[str, Any]],
+    *,
+    stage: str,
+    decode_window: int,
+) -> list[dict[str, Any]]:
+    if decode_window <= 0 or stage != "decode":
+        return events
+
+    router_by_prompt: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for event in events:
+        if event.get("schema") == "hybrimoe.router_assignments.v1" and event.get("stage") == "decode":
+            router_by_prompt[prompt_scope(event)].append(event)
+
+    cutoff_by_prompt: dict[tuple[str, str], tuple[int, int]] = {}
+    for scope, records in router_by_prompt.items():
+        layers = {event.get("layer_idx") for event in records if event.get("layer_idx") is not None}
+        layers_per_token = max(1, len(layers))
+        target_events = decode_window * layers_per_token
+        if len(records) >= target_events:
+            cutoff_by_prompt[scope] = event_sort_key(records[target_events - 1])
+
+    if not cutoff_by_prompt:
+        return events
+    return [
+        event
+        for event in events
+        if prompt_scope(event) not in cutoff_by_prompt or event_sort_key(event) <= cutoff_by_prompt[prompt_scope(event)]
+    ]
 
 
 def group_key(run_cfg: dict[str, Any], payload: dict[str, Any]) -> tuple[str, str, str, str, str, str]:
@@ -106,6 +189,9 @@ def new_bucket(run_cfg: dict[str, Any], key: tuple[str, str, str, str, str, str]
         "expert_wait_late_events": 0,
         "route_jaccard_sum": 0.0,
         "route_jaccard_samples": 0,
+        "decode_window": int(run_cfg.get("analysis_decode_window", 0) or 0),
+        "windowed_prompt_count": int(run_cfg.get("windowed_prompt_count", 0) or 0),
+        "short_prompt_count": int(run_cfg.get("short_prompt_count", 0) or 0),
     }
 
 
@@ -289,14 +375,27 @@ def find_runs(args: argparse.Namespace) -> list[Path]:
     return sorted(set(runs))
 
 
-def analyze_run(run_dir: Path, stage: str, late_wait_ms: float) -> list[dict[str, Any]]:
+def analyze_run(run_dir: Path, stage: str, late_wait_ms: float, decode_window: int) -> list[dict[str, Any]]:
     cfg = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
     cfg.setdefault("run_tag", run_dir.name)
     expert_events = load_jsonl(run_dir / "expert_cache_trace" / "expert_cache_trace.jsonl")
+    expert_events, window_meta = filter_expert_decode_window(
+        expert_events,
+        stage=stage,
+        decode_window=decode_window,
+    )
+    cfg["analysis_decode_window"] = window_meta["decode_window"]
+    cfg["windowed_prompt_count"] = window_meta["windowed_prompt_count"]
+    cfg["short_prompt_count"] = window_meta["short_prompt_count"]
     buckets = analyze_expert_events(cfg, expert_events, stage, late_wait_ms)
     router_path = run_dir / "router_trace" / "router_trace.jsonl"
     if router_path.exists():
-        analyze_router_events(cfg, load_jsonl(router_path), stage, buckets)
+        router_events = filter_router_decode_window(
+            load_jsonl(router_path),
+            stage=stage,
+            decode_window=decode_window,
+        )
+        analyze_router_events(cfg, router_events, stage, buckets)
     return [finalize_bucket(bucket) for bucket in buckets.values()]
 
 
@@ -330,6 +429,8 @@ def collapse_rows(rows: list[dict[str, Any]], keys: list[str]) -> list[dict[str,
         "expert_wait_late_events",
         "route_jaccard_sum",
         "route_jaccard_samples",
+        "windowed_prompt_count",
+        "short_prompt_count",
     ]
     for row in rows:
         key = tuple(row.get(item) for item in keys)
@@ -339,6 +440,7 @@ def collapse_rows(rows: list[dict[str, Any]], keys: list[str]) -> list[dict[str,
                 buckets[key][name] = 0
             buckets[key]["cache_size"] = row.get("cache_size")
             buckets[key]["prefetch_size"] = row.get("prefetch_size")
+            buckets[key]["decode_window"] = row.get("decode_window", 0)
         for name in additive:
             buckets[key][name] += row.get(name, 0)
     return [finalize_bucket(bucket) for bucket in buckets.values()]
@@ -392,6 +494,8 @@ def universality_stats(rows: list[dict[str, Any]], high_cache_min: int) -> dict[
         if high_cache
         else 0.0,
         "mean_high_cache_redundant": mean([row["prefetch_redundant_ratio"] for row in high_cache]) if high_cache else 0.0,
+        "decode_window": max((int(row.get("decode_window", 0) or 0) for row in rows), default=0),
+        "short_prompt_count": sum(int(row.get("short_prompt_count", 0) or 0) for row in rows),
     }
 
 
@@ -406,6 +510,7 @@ def write_report(path: Path, stats: dict[str, Any], run_rows: list[dict[str, Any
         "- high cache regime: cache_size >= threshold and prefetch_size > 0",
         "- phenomenon: cache hit >= 80%, issued assignment coverage <= 5%, redundant candidates >= 90%",
         "- dynamic drift: route drift >= 60% for shifted workloads",
+        "- if decode_window > 0, metrics use only each prompt's first aligned decode window",
         "",
         "## Summary",
         "",
@@ -451,6 +556,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stage", choices=["all", "prefill", "decode"], default="decode")
     parser.add_argument("--late-wait-ms", type=float, default=0.05)
     parser.add_argument("--high-cache-min", type=int, default=48)
+    parser.add_argument(
+        "--decode-window",
+        type=int,
+        default=0,
+        help="If >0, analyze only each prompt's first K decode tokens approximated by K times decoded MoE layers.",
+    )
     return parser.parse_args()
 
 
@@ -459,7 +570,7 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, Any]] = []
     for run_dir in find_runs(args):
-        rows.extend(analyze_run(run_dir, args.stage, args.late_wait_ms))
+        rows.extend(analyze_run(run_dir, args.stage, args.late_wait_ms, args.decode_window))
 
     rows.sort(key=lambda item: (str(item.get("run")), str(item.get("workload")), str(item.get("phase")), str(item.get("category"))))
     run_rows = collapse_rows(rows, ["run", "workload", "cache_size", "prefetch_size"])

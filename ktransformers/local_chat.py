@@ -107,6 +107,7 @@ def _run_generation(
     chunk_prefill_size: int,
     do_sample: bool | None,
     fixed_decode_tokens: bool | None,
+    min_new_tokens: int | None,
     temperature: float | None,
     top_p: float | None,
     top_k: int | None,
@@ -139,6 +140,7 @@ def _run_generation(
             q_head_dim=config.qk_rope_head_dim + config.qk_nope_head_dim,
             do_sample=do_sample,
             fixed_decode_tokens=fixed_decode_tokens,
+            min_new_tokens=min_new_tokens,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
@@ -154,6 +156,7 @@ def _run_generation(
         chunk_prefill_size=chunk_prefill_size,
         do_sample=do_sample,
         fixed_decode_tokens=fixed_decode_tokens,
+        min_new_tokens=min_new_tokens,
         temperature=temperature,
         top_p=top_p,
         top_k=top_k,
@@ -168,6 +171,7 @@ def _stream_metadata(
     *,
     do_sample: bool | None,
     fixed_decode_tokens: bool | None,
+    min_new_tokens: int | None,
     temperature: float | None,
     top_p: float | None,
     top_k: int | None,
@@ -185,6 +189,7 @@ def _stream_metadata(
         "max_new_tokens": max_new_tokens,
         "do_sample": do_sample,
         "fixed_decode_tokens": fixed_decode_tokens,
+        "min_new_tokens": min_new_tokens,
         "temperature": temperature,
         "top_p": top_p,
         "top_k": top_k,
@@ -219,6 +224,7 @@ def local_chat(
     stream_output: str | None = None,
     do_sample: bool | None = None,
     fixed_decode_tokens: bool | None = None,
+    min_new_tokens: int | None = None,
     temperature: float | None = None,
     top_p: float | None = None,
     top_k: int | None = None,
@@ -320,6 +326,7 @@ def local_chat(
                     prompt_max_new_tokens,
                     do_sample=do_sample,
                     fixed_decode_tokens=fixed_decode_tokens,
+                    min_new_tokens=min_new_tokens,
                     temperature=temperature,
                     top_p=top_p,
                     top_k=top_k,
@@ -345,6 +352,7 @@ def local_chat(
                         chunk_prefill_size=chunk_prefill_size,
                         do_sample=do_sample,
                         fixed_decode_tokens=fixed_decode_tokens,
+                        min_new_tokens=min_new_tokens,
                         temperature=temperature,
                         top_p=top_p,
                         top_k=top_k,
@@ -386,6 +394,7 @@ def local_chat(
         "max_new_tokens": int(max_new_tokens),
         "do_sample": do_sample,
         "fixed_decode_tokens": fixed_decode_tokens,
+        "min_new_tokens": min_new_tokens,
         "temperature": temperature,
         "top_p": top_p,
         "top_k": top_k,
@@ -403,6 +412,7 @@ def local_chat(
             chunk_prefill_size=chunk_prefill_size,
             do_sample=do_sample,
             fixed_decode_tokens=fixed_decode_tokens,
+            min_new_tokens=min_new_tokens,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
@@ -423,6 +433,7 @@ if __name__ == "__main__":
     parser.add_argument("--stream_output", type=str, default=None)
     parser.add_argument("--do_sample", type=int, choices=[0, 1], default=None)
     parser.add_argument("--fixed_decode_tokens", type=int, choices=[0, 1], default=None)
+    parser.add_argument("--min_new_tokens", type=int, default=None)
     parser.add_argument("--temperature", type=float, default=None)
     parser.add_argument("--top_p", type=float, default=None)
     parser.add_argument("--top_k", type=int, default=None)
@@ -441,6 +452,7 @@ if __name__ == "__main__":
         stream_output=args.stream_output,
         do_sample=None if args.do_sample is None else bool(args.do_sample),
         fixed_decode_tokens=None if args.fixed_decode_tokens is None else bool(args.fixed_decode_tokens),
+        min_new_tokens=args.min_new_tokens,
         temperature=args.temperature,
         top_p=args.top_p,
         top_k=args.top_k,

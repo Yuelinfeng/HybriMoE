@@ -112,7 +112,7 @@ def load_weights(module:nn.Module, gguf_loader:GGUFLoader, prefix=''):
 def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cuda_graph: bool = True,
                          mode = 'normal', force_think: bool = False, chunk_prefill_size = 16384, use_flashinfer_mla = False,
                          num_heads = None, head_dim_ckv = None, head_dim_kpe = None, q_head_dim = None,
-                         do_sample = None, fixed_decode_tokens = None,
+                         do_sample = None, fixed_decode_tokens = None, min_new_tokens = None,
                          temperature = None, top_p = None, top_k = None):
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -130,6 +130,9 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
         do_sample = os.environ.get("HYBRIMOE_DO_SAMPLE", "1").strip().lower() in {"1", "true", "yes", "on"}
     if fixed_decode_tokens is None:
         fixed_decode_tokens = os.environ.get("HYBRIMOE_FIXED_DECODE_TOKENS", "0").strip().lower() in {"1", "true", "yes", "on"}
+    if min_new_tokens is None:
+        min_new_tokens = int(os.environ.get("HYBRIMOE_MIN_NEW_TOKENS", "0"))
+    min_new_tokens = max(0, min(int(min_new_tokens), int(max_new_tokens)))
     if temperature is None and os.environ.get("HYBRIMOE_TEMPERATURE"):
         temperature = float(os.environ["HYBRIMOE_TEMPERATURE"])
     if top_p is None and os.environ.get("HYBRIMOE_TOP_P"):
@@ -274,7 +277,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
         next_token = select_next_token(
             next_token_scores,
             generation_config,
-            suppress_eos=bool(fixed_decode_tokens and max_new_tokens > 1),
+            suppress_eos=bool((fixed_decode_tokens and max_new_tokens > 1) or min_new_tokens > 1),
         )
 
         first_token_time = time.time() - start_time
@@ -316,14 +319,14 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
                 logits_warper,
                 generation_config,
                 use_cuda_graph,
-                suppress_eos=bool(fixed_decode_tokens and i < max_new_tokens - 1),
+                suppress_eos=bool((fixed_decode_tokens and i < max_new_tokens - 1) or i < min_new_tokens - 1),
             ).to(torch_device)
             inputs = torch.cat((inputs, next_token.unsqueeze(0)), dim=-1)
             generated_ids[:, cache_position] = next_token.int()
             tokens.append(int(next_token))
             seq_length += 1
             
-            if not fixed_decode_tokens and is_eos_token(next_token):
+            if not fixed_decode_tokens and len(tokens) >= min_new_tokens and is_eos_token(next_token):
                 print(stream.end(), end="", flush=True)
                 break
             else:

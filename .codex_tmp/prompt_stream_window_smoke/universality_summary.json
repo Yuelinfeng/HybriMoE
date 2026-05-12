@@ -1,0 +1,14 @@
+{
+  "group_count": 3,
+  "high_cache_prefetch_group_count": 2,
+  "high_hit_low_utility_group_count": 2,
+  "high_hit_low_utility_fraction": 1.0,
+  "dynamic_group_count": 0,
+  "dynamic_high_route_drift_count": 0,
+  "dynamic_high_route_drift_fraction": 0.0,
+  "mean_high_cache_hit": 0.9056410256410257,
+  "mean_high_cache_issued_coverage": 0.006063768115942029,
+  "mean_high_cache_redundant": 0.9698391304347826,
+  "decode_window": 32,
+  "short_prompt_count": 3
+}
