@@ -13,9 +13,15 @@ GGUF_PATH="${GGUF_PATH:-/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF}"
 OPTIMIZE_CONFIG_PATH="${OPTIMIZE_CONFIG_PATH:-ktransformers/optimize/optimize_rules/DeepSeek-V2-Chat-gpu.yaml}"
 
 PROMPT_SUITE_DIR="${PROMPT_SUITE_DIR:-/root/autodl-tmp/hybrimoe_prompt_suite_v1}"
+PROMPT_DATASET_PRESET="${PROMPT_DATASET_PRESET:-synthetic}"
+DATASET_NAME="${DATASET_NAME:-cais/mmlu}"
+DATASET_CONFIG="${DATASET_CONFIG:-all}"
+DATASET_SPLIT="${DATASET_SPLIT:-test}"
+DATASET_MAX_PROMPTS="${DATASET_MAX_PROMPTS:-1000}"
 PROMPTS_PER_CATEGORY="${PROMPTS_PER_CATEGORY:-100}"
 STREAM_LENGTH="${STREAM_LENGTH:-100}"
 STREAM_SEEDS="${STREAM_SEEDS:-0,1,2}"
+WORKLOADS="${WORKLOADS:-stable_mixed,shifted_mixed}"
 STREAM_GLOB="${STREAM_GLOB:-${PROMPT_SUITE_DIR}/streams/*.jsonl}"
 PROMPT_LIMIT="${PROMPT_LIMIT:-0}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-160}"
@@ -27,6 +33,15 @@ TOP_P="${TOP_P:-0.75}"
 TOP_K="${TOP_K:-10}"
 OVERRIDE_STREAM_MAX_NEW_TOKENS="${OVERRIDE_STREAM_MAX_NEW_TOKENS:-1}"
 ANALYSIS_DECODE_WINDOW="${ANALYSIS_DECODE_WINDOW:-128}"
+RUN_SPEC_REPLAY="${RUN_SPEC_REPLAY:-1}"
+SPEC_REPLAY_LOOKAHEAD_EVENTS="${SPEC_REPLAY_LOOKAHEAD_EVENTS:-32}"
+SPEC_REPLAY_TRANSFER_LATENCY="${SPEC_REPLAY_TRANSFER_LATENCY:-4}"
+SPEC_REPLAY_DRAFT_MODE="${SPEC_REPLAY_DRAFT_MODE:-oracle}"
+SPEC_REPLAY_DRAFT_FIDELITY="${SPEC_REPLAY_DRAFT_FIDELITY:-1.0}"
+SPEC_REPLAY_ACCEPT_PROB="${SPEC_REPLAY_ACCEPT_PROB:-0.8}"
+SPEC_REPLAY_GATE_THRESHOLD="${SPEC_REPLAY_GATE_THRESHOLD:-0.25}"
+SPEC_REPLAY_GATE_THRESHOLDS="${SPEC_REPLAY_GATE_THRESHOLDS:-}"
+SPEC_REPLAY_CUTOFF_LAYER="${SPEC_REPLAY_CUTOFF_LAYER:-12}"
 
 CACHE_SIZES="${CACHE_SIZES:-16 32 48 56}"
 PREFETCH_SIZES="${PREFETCH_SIZES:-0 4 8}"
@@ -60,12 +75,26 @@ fi
 
 if [[ ! -d "${PROMPT_SUITE_DIR}/streams" ]]; then
   echo "[prompt-stream] building prompt suite at $PROMPT_SUITE_DIR"
-  "$PYTHON_BIN" experiments/build_prompt_suite.py \
-    --output-dir "$PROMPT_SUITE_DIR" \
-    --prompts-per-category "$PROMPTS_PER_CATEGORY" \
-    --stream-length "$STREAM_LENGTH" \
-    --stream-seeds "$STREAM_SEEDS" \
-    --max-new-tokens "$MAX_NEW_TOKENS"
+  if [[ "$PROMPT_DATASET_PRESET" == "mmlu" ]]; then
+    "$PYTHON_BIN" experiments/build_dataset_prompt_suite.py \
+      --preset mmlu \
+      --dataset-name "$DATASET_NAME" \
+      --dataset-config "$DATASET_CONFIG" \
+      --split "$DATASET_SPLIT" \
+      --output-dir "$PROMPT_SUITE_DIR" \
+      --max-prompts "$DATASET_MAX_PROMPTS" \
+      --stream-length "$STREAM_LENGTH" \
+      --stream-seeds "$STREAM_SEEDS" \
+      --workloads "$WORKLOADS" \
+      --max-new-tokens "$MAX_NEW_TOKENS"
+  else
+    "$PYTHON_BIN" experiments/build_prompt_suite.py \
+      --output-dir "$PROMPT_SUITE_DIR" \
+      --prompts-per-category "$PROMPTS_PER_CATEGORY" \
+      --stream-length "$STREAM_LENGTH" \
+      --stream-seeds "$STREAM_SEEDS" \
+      --max-new-tokens "$MAX_NEW_TOKENS"
+  fi
 fi
 
 shopt -s nullglob
@@ -87,6 +116,7 @@ echo "[prompt-stream] fixed_decode_tokens=$FIXED_DECODE_TOKENS temperature=$TEMP
 echo "[prompt-stream] min_new_tokens=$MIN_NEW_TOKENS"
 echo "[prompt-stream] override_stream_max_new_tokens=$OVERRIDE_STREAM_MAX_NEW_TOKENS"
 echo "[prompt-stream] analysis_decode_window=$ANALYSIS_DECODE_WINDOW"
+echo "[prompt-stream] run_spec_replay=$RUN_SPEC_REPLAY"
 echo "[prompt-stream] python: $($PYTHON_BIN --version 2>&1)"
 
 run_one() {
@@ -221,6 +251,23 @@ done
   --decode-window "$ANALYSIS_DECODE_WINDOW" || true
 
 tar -C "$OUT_BASE" -cf "${OUT_BASE}/aggregate_analysis.tar" aggregate_analysis 2>/dev/null || true
+
+if [[ "$RUN_SPEC_REPLAY" == "1" ]]; then
+  "$PYTHON_BIN" experiments/replay_speculative_prefetch.py \
+    --input-root "$OUT_BASE" \
+    --output-dir "${OUT_BASE}/spec_replay_analysis" \
+    --stage "$EXPERT_STAGE" \
+    --decode-window "$ANALYSIS_DECODE_WINDOW" \
+    --draft-mode "$SPEC_REPLAY_DRAFT_MODE" \
+    --draft-fidelity "$SPEC_REPLAY_DRAFT_FIDELITY" \
+    --accept-prob "$SPEC_REPLAY_ACCEPT_PROB" \
+    --lookahead-events "$SPEC_REPLAY_LOOKAHEAD_EVENTS" \
+    --transfer-latency "$SPEC_REPLAY_TRANSFER_LATENCY" \
+    --gate-threshold "$SPEC_REPLAY_GATE_THRESHOLD" \
+    --gate-thresholds "$SPEC_REPLAY_GATE_THRESHOLDS" \
+    --cutoff-layer "$SPEC_REPLAY_CUTOFF_LAYER" || true
+  tar -C "$OUT_BASE" -cf "${OUT_BASE}/spec_replay_analysis.tar" spec_replay_analysis 2>/dev/null || true
+fi
 
 echo "[prompt-stream] done"
 echo "[prompt-stream] output_base=$OUT_BASE"
