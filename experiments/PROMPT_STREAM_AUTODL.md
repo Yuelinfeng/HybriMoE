@@ -14,7 +14,7 @@ python experiments/build_prompt_suite.py \
   --prompts-per-category 100 \
   --stream-length 100 \
   --stream-seeds 0,1,2 \
-  --max-new-tokens 160
+  --max-new-tokens 128
 ```
 
 Outputs:
@@ -37,15 +37,13 @@ STREAM_GLOB='/root/autodl-tmp/hybrimoe_prompt_suite_v1/streams/shifted_mixed_see
 CACHE_SIZES='56' \
 PREFETCH_SIZES='8' \
 PROMPT_LIMIT=10 \
-MAX_NEW_TOKENS=160 \
-FIXED_DECODE_TOKENS=0 \
-MIN_NEW_TOKENS=0 \
+MAX_NEW_TOKENS=64 \
+FIXED_DECODE_TOKENS=1 \
 DO_SAMPLE=1 \
-TEMPERATURE=0.2 \
-TOP_P=0.75 \
-TOP_K=10 \
+TEMPERATURE=0.6 \
+TOP_P=0.9 \
+TOP_K=50 \
 OVERRIDE_STREAM_MAX_NEW_TOKENS=1 \
-ANALYSIS_DECODE_WINDOW=128 \
 HYBRIMOE_SAFE_SAMPLING=1 \
 GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
 bash experiments/run_prompt_stream_autodl.sh
@@ -63,31 +61,23 @@ PROMPT_SUITE_DIR=/root/autodl-tmp/hybrimoe_prompt_suite_v1 \
 CACHE_SIZES='16 32 48 56' \
 PREFETCH_SIZES='0 4 8' \
 PROMPT_LIMIT=0 \
-MAX_NEW_TOKENS=160 \
-FIXED_DECODE_TOKENS=0 \
-MIN_NEW_TOKENS=0 \
+MAX_NEW_TOKENS=128 \
+FIXED_DECODE_TOKENS=1 \
 DO_SAMPLE=1 \
-TEMPERATURE=0.2 \
-TOP_P=0.75 \
-TOP_K=10 \
+TEMPERATURE=0.6 \
+TOP_P=0.9 \
+TOP_K=50 \
 OVERRIDE_STREAM_MAX_NEW_TOKENS=1 \
-ANALYSIS_DECODE_WINDOW=128 \
 HYBRIMOE_SAFE_SAMPLING=1 \
 GGUF_PATH=/root/autodl-tmp/models/DeepSeek-V2-Lite-Chat-GGUF \
 bash experiments/run_prompt_stream_autodl.sh
 ```
 
-`FIXED_DECODE_TOKENS=0` intentionally lets the model stop naturally. Do not
-force EOS suppression for the main paper run; it can push short prompts into
-low-probability tail tokens and corrupt the routing trace.
-
-Token alignment is done in analysis instead: `ANALYSIS_DECODE_WINDOW=128`
-means the aggregate analysis uses each prompt's first aligned decode window
-while the raw trace remains complete for later re-analysis.
-
-`DO_SAMPLE=1` with tight sampling gives non-greedy but readable responses, while
-`HYBRIMOE_SAFE_SAMPLING=1` falls back safely if a quantized run produces invalid
-sampling probabilities.
+`FIXED_DECODE_TOKENS=1` suppresses EOS until the final decode step, so each
+prompt contributes exactly `MAX_NEW_TOKENS` decode tokens unless the process
+fails. `DO_SAMPLE=1` with low temperature/top-p gives more realistic output
+than greedy decode, while `HYBRIMOE_SAFE_SAMPLING=1` falls back safely if a
+quantized run produces invalid sampling probabilities.
 
 `OVERRIDE_STREAM_MAX_NEW_TOKENS=1` makes the runner's `MAX_NEW_TOKENS` override
 any older `max_new_tokens` values stored in a previously generated prompt suite.
@@ -98,10 +88,10 @@ For the strictest deterministic measurement, use:
 DO_SAMPLE=0
 ```
 
-For better qualitative outputs, use tighter non-greedy sampling first:
+For better qualitative outputs, use:
 
 ```bash
-DO_SAMPLE=1 TEMPERATURE=0.2 TOP_P=0.75 TOP_K=10
+DO_SAMPLE=1 TEMPERATURE=0.6 TOP_P=0.9 TOP_K=50
 ```
 
 To reduce cost, narrow the stream glob first:
@@ -118,8 +108,7 @@ cd /root/autodl-tmp/benchmark/src/HybriMoE
 python experiments/analyze_prompt_stream_mechanisms.py \
   --input-root /root/autodl-tmp/hybrimoe_prompt_stream_runs \
   --output-dir /root/autodl-tmp/hybrimoe_prompt_stream_runs/aggregate_analysis \
-  --stage decode \
-  --decode-window 128
+  --stage decode
 ```
 
 Outputs:

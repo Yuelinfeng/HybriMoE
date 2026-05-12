@@ -440,7 +440,6 @@ def collapse_rows(rows: list[dict[str, Any]], keys: list[str]) -> list[dict[str,
                 buckets[key][name] = 0
             buckets[key]["cache_size"] = row.get("cache_size")
             buckets[key]["prefetch_size"] = row.get("prefetch_size")
-            buckets[key]["decode_window"] = row.get("decode_window", 0)
         for name in additive:
             buckets[key][name] += row.get(name, 0)
     return [finalize_bucket(bucket) for bucket in buckets.values()]
