@@ -93,6 +93,10 @@ class ExpertCacheTraceRecorder:
         loaded_experts: Any = None,
         evicted_experts: Any = None,
         buffered_experts: Any = None,
+        source: str | None = None,
+        prefetch_issue_id: int | None = None,
+        wait_ns: int | None = None,
+        duration_ns: int | None = None,
         cache_load_size: int | None = None,
         prefetch_size: int | None = None,
         expert_num: int | None = None,
@@ -138,6 +142,16 @@ class ExpertCacheTraceRecorder:
             payload["stage"] = "decode" if generate else "prefill"
         if device is not None:
             payload["device"] = str(device)
+        if source is not None:
+            payload["source"] = str(source)
+        if prefetch_issue_id is not None:
+            payload["prefetch_issue_id"] = int(prefetch_issue_id)
+        if wait_ns is not None:
+            payload["wait_ns"] = int(wait_ns)
+            payload["wait_ms"] = int(wait_ns) / 1_000_000.0
+        if duration_ns is not None:
+            payload["duration_ns"] = int(duration_ns)
+            payload["duration_ms"] = int(duration_ns) / 1_000_000.0
         if cache_load_size is not None:
             payload["cache_load_size"] = int(cache_load_size)
         if prefetch_size is not None:

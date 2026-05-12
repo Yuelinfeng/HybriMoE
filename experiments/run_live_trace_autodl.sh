@@ -109,6 +109,12 @@ echo "[hybrimoe-live-trace] analyzing expert cache trace"
   --stage "$EXPERT_STAGE" \
   --output-dir "${EXPERT_DIR}/analysis_${EXPERT_STAGE}"
 
+echo "[hybrimoe-live-trace] analyzing mechanism diagnosis"
+"$PYTHON_BIN" experiments/analyze_mechanism_trace.py \
+  --run-dir "$OUT_ROOT" \
+  --stage "$EXPERT_STAGE" \
+  --output-dir "${OUT_ROOT}/mechanism_analysis"
+
 TAR_PATH="${OUT_ROOT}.tar"
 tar -C "$(dirname "$OUT_ROOT")" -cf "$TAR_PATH" "$(basename "$OUT_ROOT")"
 

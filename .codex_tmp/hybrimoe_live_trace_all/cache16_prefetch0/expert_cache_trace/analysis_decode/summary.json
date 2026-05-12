@@ -1,0 +1,83 @@
+{
+  "trace_path": "/root/autodl-tmp/hybrimoe_live_trace/cache16_prefetch0/expert_cache_trace/expert_cache_trace.jsonl",
+  "stage_filter": "decode",
+  "events_used": 4211,
+  "events_skipped": 26,
+  "placement": {
+    "placement_events": 234,
+    "selected_experts": 1404,
+    "resident_hit_experts": 706,
+    "resident_miss_experts": 698,
+    "resident_hit_expert_ratio": 0.5028490028490028,
+    "assignments": 1404,
+    "resident_hit_assignments": 706,
+    "resident_miss_assignments": 698,
+    "resident_hit_assignment_ratio": 0.5028490028490028,
+    "gpu_assignments": 1167,
+    "cpu_assignments": 237,
+    "gpu_assignment_ratio": 0.8311965811965812,
+    "cpu_assignment_ratio": 0.16880341880341881,
+    "by_stage": {
+      "decode": {
+        "events": 234,
+        "selected_experts": 1404,
+        "resident_hit_experts": 706,
+        "assignments": 1404,
+        "resident_hit_assignments": 706,
+        "gpu_assignments": 1167,
+        "cpu_assignments": 237,
+        "resident_hit_expert_ratio": 0.5028490028490028,
+        "resident_hit_assignment_ratio": 0.5028490028490028,
+        "gpu_assignment_ratio": 0.8311965811965812,
+        "cpu_assignment_ratio": 0.16880341880341881
+      }
+    }
+  },
+  "prefetch": {
+    "prefetch_issue_events": 225,
+    "prefetch_candidate_experts": 0,
+    "prefetch_already_resident_experts": 0,
+    "prefetch_issued_load_experts": 0,
+    "prefetch_redundant_candidate_ratio": 0.0,
+    "prefetch_issued_candidate_ratio": 0.0
+  },
+  "prefetch_match": {
+    "matched_prefetch_windows": 225,
+    "matched_prefetch_candidates": 0,
+    "matched_issued_loads": 0,
+    "prefetch_candidate_used_by_next_layer_ratio": 0.0,
+    "prefetch_issued_used_by_next_layer_ratio": 0.0,
+    "prefetch_candidate_assignment_coverage_ratio": 0.0,
+    "prefetch_issued_assignment_coverage_ratio": 0.0,
+    "candidate_overlap_experts": 0,
+    "issued_overlap_experts": 0,
+    "matched_placement_assignments": 1350
+  },
+  "load_evict": {
+    "load_evict_events": 3752,
+    "loaded_experts": 1298,
+    "buffered_experts": 1572,
+    "evicted_experts": 882,
+    "evictions_per_loaded_expert": 0.6795069337442219,
+    "by_type": {
+      "buffer_load": {
+        "events": 1572,
+        "loaded_experts": 0,
+        "buffered_experts": 1572,
+        "evicted_experts": 0
+      },
+      "evict": {
+        "events": 882,
+        "loaded_experts": 0,
+        "buffered_experts": 0,
+        "evicted_experts": 882
+      },
+      "load": {
+        "events": 1298,
+        "loaded_experts": 1298,
+        "buffered_experts": 0,
+        "evicted_experts": 0
+      }
+    }
+  }
+}

@@ -60,6 +60,11 @@ python experiments/analyze_expert_cache_trace.py \
   --stage decode \
   --output-dir /root/autodl-tmp/hybrimoe_expert_trace/analysis_decode
 
+python experiments/analyze_mechanism_trace.py \
+  --run-dir /root/autodl-tmp/hybrimoe_live_trace/cache16_prefetch4 \
+  --stage decode \
+  --output-dir /root/autodl-tmp/hybrimoe_live_trace/cache16_prefetch4/mechanism_analysis
+
 tar -C /root/autodl-tmp -cf /root/autodl-tmp/hybrimoe_expert_trace.tar \
   hybrimoe_router_trace hybrimoe_expert_trace
 ```
@@ -75,6 +80,8 @@ tar -C /root/autodl-tmp -cf /root/autodl-tmp/hybrimoe_expert_trace.tar \
 - `prefetch_candidate_assignment_coverage_ratio`: 被预取候选覆盖的下一层 assignment 比例。
 - `loaded_experts` / `evicted_experts`: 真实 cache load 与 eviction 次数，用来观察预取是否制造额外替换压力。
 - `evictions_per_loaded_expert`: 每次 load 伴随的平均 eviction 压力，辅助判断 cache degradation。
+- `prefetch_wait` / `expert_wait`: timing instrumentation 后可用，用来判断 prefetch 是否 ready before consume，以及 demand load 是否造成 CUDA event wait。
+- `eviction_damage_miss_ratio`: 被 eviction 过、随后又以 miss 形式被请求的 expert 占比，用来定位 cache pollution 是否转化为后续 miss。
 
 ## 边界
 

@@ -1,0 +1,8 @@
+{
+  "trace_path": "/root/autodl-tmp/hybrimoe_live_trace/cache16_prefetch8/router_trace/router_trace.jsonl",
+  "model_type": "deepseek_v2",
+  "events_used": 234,
+  "events_skipped": 26,
+  "num_experts": 64,
+  "max_assignments_per_event": 6
+}

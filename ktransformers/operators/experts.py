@@ -467,7 +467,24 @@ class KExpertsMarlin(KExpertsBase):
             device=self.cache.layer2device.get(self.layer_idx),
             metadata={"policy": "hss_decode" if generate else "prefill_all_gpu"},
         )
+        prefetch_wait_start_ns = time.perf_counter_ns()
+        prefetching_before_wait = self.cache.prefetching
         self.cache.wait_prefetch()
+        prefetch_wait_ns = time.perf_counter_ns() - prefetch_wait_start_ns
+        trace_expert_cache_event(
+            event_type="prefetch_wait",
+            layer_idx=self.layer_idx,
+            generate=generate,
+            selected_experts=unique_selected_experts,
+            gpu_experts=gpu_idxs,
+            cpu_experts=cpu_idxs,
+            wait_ns=prefetch_wait_ns,
+            cache_load_size=self.cache.load_size[self.layer_idx],
+            prefetch_size=self.cache.prefetch_size,
+            expert_num=self.expert_num,
+            device=self.cache.layer2device.get(self.layer_idx),
+            metadata={"prefetching_before_wait": bool(prefetching_before_wait)},
+        )
         if not generate:
             idx_top_x_list = [torch.where(expert_mask[expert_idx]) for expert_idx in range(self.expert_num)]
             expert_weights, sorted_idx = self.cache.get_experts_weights(
@@ -501,13 +518,35 @@ class KExpertsMarlin(KExpertsBase):
                 gate_proj = self.gate_projs[expert_idx]
                 up_proj = self.up_projs[expert_idx]
                 gate_weight, up_weight, down_weight = expert_weights[expert_idx]
+                wait_start_ns = time.perf_counter_ns()
                 self.loading_lock[expert_idx][0].wait()
+                gate_wait_ns = time.perf_counter_ns() - wait_start_ns
                 G = gate_proj(current_state, gate_weight)
                 A = self.act_fn(G)
+                wait_start_ns = time.perf_counter_ns()
                 self.loading_lock[expert_idx][1].wait()
+                up_wait_ns = time.perf_counter_ns() - wait_start_ns
                 U = up_proj(current_state, up_weight)
                 H = A * U
+                wait_start_ns = time.perf_counter_ns()
                 self.loading_lock[expert_idx][2].wait()
+                down_wait_ns = time.perf_counter_ns() - wait_start_ns
+                trace_expert_cache_event(
+                    event_type="expert_wait",
+                    layer_idx=self.layer_idx,
+                    generate=generate,
+                    selected_experts=[expert_idx],
+                    wait_ns=gate_wait_ns + up_wait_ns + down_wait_ns,
+                    cache_load_size=self.cache.load_size[self.layer_idx],
+                    prefetch_size=self.cache.prefetch_size,
+                    expert_num=self.expert_num,
+                    device=self.cache.layer2device.get(self.layer_idx),
+                    metadata={
+                        "gate_wait_ns": int(gate_wait_ns),
+                        "up_wait_ns": int(up_wait_ns),
+                        "down_wait_ns": int(down_wait_ns),
+                    },
+                )
                 D = down_proj(H, down_weight)
                 current_hidden_states = D * weights[top_x, idx, None]
                 final_hidden_states.index_add_(0, top_x, current_hidden_states)
@@ -537,13 +576,35 @@ class KExpertsMarlin(KExpertsBase):
                 gate_proj = self.gate_projs[expert_idx]
                 up_proj = self.up_projs[expert_idx]
                 gate_weight, up_weight, down_weight = expert_weights[expert_idx]
+                wait_start_ns = time.perf_counter_ns()
                 self.loading_lock[expert_idx][0].wait()
+                gate_wait_ns = time.perf_counter_ns() - wait_start_ns
                 G = gate_proj(current_state, gate_weight)
                 A = self.act_fn(G)
+                wait_start_ns = time.perf_counter_ns()
                 self.loading_lock[expert_idx][1].wait()
+                up_wait_ns = time.perf_counter_ns() - wait_start_ns
                 U = up_proj(current_state, up_weight)
                 H = A * U
+                wait_start_ns = time.perf_counter_ns()
                 self.loading_lock[expert_idx][2].wait()
+                down_wait_ns = time.perf_counter_ns() - wait_start_ns
+                trace_expert_cache_event(
+                    event_type="expert_wait",
+                    layer_idx=self.layer_idx,
+                    generate=generate,
+                    selected_experts=[expert_idx],
+                    wait_ns=gate_wait_ns + up_wait_ns + down_wait_ns,
+                    cache_load_size=self.cache.load_size[self.layer_idx],
+                    prefetch_size=self.cache.prefetch_size,
+                    expert_num=self.expert_num,
+                    device=self.cache.layer2device.get(self.layer_idx),
+                    metadata={
+                        "gate_wait_ns": int(gate_wait_ns),
+                        "up_wait_ns": int(up_wait_ns),
+                        "down_wait_ns": int(down_wait_ns),
+                    },
+                )
                 D = down_proj(H, down_weight)
                 current_hidden_states = D * weights[top_x, idx, None]
                 final_hidden_states.index_add_(0, top_x, current_hidden_states)
@@ -904,6 +965,7 @@ class KExpertsCache:
             self.fetch_hits = 0
             self.fetch_misses = 0
             self.fetchs = {}
+            self.prefetch_issue_seq = 0
             self.initialized = True
 
             self.time_table = {}
@@ -942,7 +1004,7 @@ class KExpertsCache:
         return weight
 
     def load_expert_weights(
-        self, expert_uid, init=False, non_blocking=True, loading_lock=None, stream=None, prefill=False
+        self, expert_uid, init=False, non_blocking=True, loading_lock=None, stream=None, prefill=False, source="demand"
     ):
         layer_idx = expert_uid // self.expert_num_per_layer
         initial_layer_idx = layer_idx
@@ -977,12 +1039,14 @@ class KExpertsCache:
                             prefetch_size=self.prefetch_size,
                             expert_num=self.expert_num_per_layer,
                             device=device,
+                            source=source,
                             metadata={
                                 "expert_uid": int(expert_uid),
                                 "buffer_slot": int(i),
                                 "init": bool(init),
                                 "prefill": bool(prefill),
                                 "non_blocking": bool(non_blocking),
+                                "source": str(source),
                             },
                         )
                         return
@@ -996,6 +1060,7 @@ class KExpertsCache:
                     offload_expert,
                     device,
                     layer_idx,
+                    source=source,
                 )
 
         memory_slot = self.free_memory_slots[device][layer_idx].pop(0)
@@ -1028,12 +1093,14 @@ class KExpertsCache:
             prefetch_size=self.prefetch_size,
             expert_num=self.expert_num_per_layer,
             device=device,
+            source=source,
             metadata={
                 "expert_uid": int(expert_uid),
                 "memory_slot": int(memory_slot),
                 "init": bool(init),
                 "prefill": bool(prefill),
                 "non_blocking": bool(non_blocking),
+                "source": str(source),
             },
         )
 
@@ -1042,9 +1109,9 @@ class KExpertsCache:
             for layer, experts in layers.items():
                 experts_copy = list(experts.keys())
                 for expert in experts_copy:
-                    self.unload_expert_weights(expert, device, layer)
+                    self.unload_expert_weights(expert, device, layer, source="reset_offload")
 
-    def unload_expert_weights(self, expert_uid, device=None, layer_idx=None):
+    def unload_expert_weights(self, expert_uid, device=None, layer_idx=None, source="unknown"):
         if device is None:
             layer_idx = expert_uid // self.expert_num_per_layer
             device = self.layer2device[layer_idx]
@@ -1061,7 +1128,8 @@ class KExpertsCache:
             prefetch_size=self.prefetch_size,
             expert_num=self.expert_num_per_layer,
             device=device,
-            metadata={"expert_uid": int(expert_uid), "memory_slot": int(memory_slot)},
+            source=source,
+            metadata={"expert_uid": int(expert_uid), "memory_slot": int(memory_slot), "source": str(source)},
         )
         return self.slots2layer[memory_slot]
 
@@ -1119,6 +1187,9 @@ class KExpertsCache:
         else:
             return
         self.prefetching = True
+        prefetch_start_ns = time.perf_counter_ns()
+        prefetch_issue_id = self.prefetch_issue_seq
+        self.prefetch_issue_seq += 1
         experts = self.score_aware_cache.get_experts_to_prefetch(next_layer, self.prefetch_size)
         prefetch_experts = []
         prefetch_resident_experts = []
@@ -1136,6 +1207,7 @@ class KExpertsCache:
                     non_blocking=True,
                     loading_lock=self.prefetch_lock[idx],
                     stream=self.prefetch_stream,
+                    source="prefetch",
                 )
             else:
                 prefetch_resident_experts.append(expert_id)
@@ -1146,6 +1218,9 @@ class KExpertsCache:
             prefetch_experts=prefetch_experts,
             prefetch_resident_experts=prefetch_resident_experts,
             issued_load_experts=issued_load_experts,
+            source="prefetch",
+            prefetch_issue_id=prefetch_issue_id,
+            duration_ns=time.perf_counter_ns() - prefetch_start_ns,
             cache_load_size=self.load_size[next_layer],
             prefetch_size=self.prefetch_size,
             expert_num=self.expert_num_per_layer,
@@ -1178,7 +1253,13 @@ class KExpertsCache:
                 self.buffer_down_views[device][memory_slot],
             )
             return expert
-        self.load_expert_weights(expert_uid, non_blocking=True, loading_lock=loading_lock, prefill=prefill)
+        self.load_expert_weights(
+            expert_uid,
+            non_blocking=True,
+            loading_lock=loading_lock,
+            prefill=prefill,
+            source="demand_prefill" if prefill else "demand",
+        )
         return self.get_expert_weights(expert_uid, loading_lock=loading_lock)
 
     def reset_buffer(self, layer_idx):
@@ -1191,6 +1272,7 @@ class KExpertsCache:
                     i + (layer_idx + 1) * self.expert_num_per_layer,
                     prefill=True,
                     loading_lock=self.prefetch_lock[i],
+                    source="prefill_buffer",
                 )
 
     def load_weights_to_storage(self, gate, up, down, expert_uid, dtype):
@@ -1202,7 +1284,7 @@ class KExpertsCache:
         self.down_storage[expert_uid].copy_(down)
 
         loading_lock = [torch.cuda.Event() for _ in range(3)]
-        self.load_expert_weights(expert_uid, init=True, loading_lock=loading_lock)
+        self.load_expert_weights(expert_uid, init=True, loading_lock=loading_lock, source="init")
 
     def calc_experts(self, load_idxs, unload_idxs, org_indexes, generate, id_counts):
         all_idxs = load_idxs + unload_idxs

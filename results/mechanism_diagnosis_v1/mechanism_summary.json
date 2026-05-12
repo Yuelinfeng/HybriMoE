@@ -1,0 +1,542 @@
+[
+  {
+    "run": "cache16_prefetch0",
+    "cache_size": 16,
+    "prefetch_size": 0,
+    "event_counts": {
+      "load": 1298,
+      "placement": 260,
+      "buffer_load": 1572,
+      "evict": 882,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.4297725024727992,
+    "live_cache_miss_ratio": 0.5702274975272008,
+    "cpu_assignment_ratio": 0.08936651583710407,
+    "gpu_assignment_ratio": 0.9106334841628959,
+    "prefetch_candidates": 0,
+    "prefetch_issued": 0,
+    "prefetch_redundant_ratio": 0.0,
+    "prefetch_issued_candidate_ratio": 0.0,
+    "load_by_source": {
+      "unknown": {
+        "events": 3752,
+        "loaded": 1298,
+        "evicted": 882,
+        "buffered": 1572
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.0,
+    "prefetch_issued_used_ratio": 0.0,
+    "prefetch_candidate_assignment_coverage": 0.0,
+    "prefetch_issued_assignment_coverage": 0.0,
+    "prefetch_issued_unused_ratio": 0.0,
+    "resident_miss_experts": 1153,
+    "resident_miss_assignments": 1623,
+    "eviction_damaged_miss_experts": 323,
+    "eviction_damaged_miss_assignments": 323,
+    "eviction_damage_miss_ratio": 0.28013876843018215,
+    "eviction_damage_assignment_ratio": 0.19901417128773877,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.26457292707292707,
+    "route_drift_ratio": 0.7354270729270729,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache16_prefetch4",
+    "cache_size": 16,
+    "prefetch_size": 4,
+    "event_counts": {
+      "load": 1437,
+      "placement": 260,
+      "buffer_load": 1572,
+      "evict": 1021,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.4268051434223541,
+    "live_cache_miss_ratio": 0.5731948565776459,
+    "cpu_assignment_ratio": 0.09049773755656108,
+    "gpu_assignment_ratio": 0.9095022624434389,
+    "prefetch_candidates": 900,
+    "prefetch_issued": 133,
+    "prefetch_redundant_ratio": 0.8522222222222222,
+    "prefetch_issued_candidate_ratio": 0.14777777777777779,
+    "load_by_source": {
+      "unknown": {
+        "events": 4030,
+        "loaded": 1437,
+        "evicted": 1021,
+        "buffered": 1572
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.25666666666666665,
+    "prefetch_issued_used_ratio": 0.14285714285714285,
+    "prefetch_candidate_assignment_coverage": 0.1711111111111111,
+    "prefetch_issued_assignment_coverage": 0.014074074074074074,
+    "prefetch_issued_unused_ratio": 0.8571428571428572,
+    "resident_miss_experts": 1159,
+    "resident_miss_assignments": 1629,
+    "eviction_damaged_miss_experts": 350,
+    "eviction_damaged_miss_assignments": 350,
+    "eviction_damage_miss_ratio": 0.30198446937014667,
+    "eviction_damage_assignment_ratio": 0.21485573971761818,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.2600836663336663,
+    "route_drift_ratio": 0.7399163336663337,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache16_prefetch8",
+    "cache_size": 16,
+    "prefetch_size": 8,
+    "event_counts": {
+      "load": 1629,
+      "placement": 260,
+      "buffer_load": 1572,
+      "evict": 1213,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.4426310583580613,
+    "live_cache_miss_ratio": 0.5573689416419386,
+    "cpu_assignment_ratio": 0.08974358974358974,
+    "gpu_assignment_ratio": 0.9102564102564102,
+    "prefetch_candidates": 1800,
+    "prefetch_issued": 351,
+    "prefetch_redundant_ratio": 0.805,
+    "prefetch_issued_candidate_ratio": 0.195,
+    "load_by_source": {
+      "unknown": {
+        "events": 4414,
+        "loaded": 1629,
+        "evicted": 1213,
+        "buffered": 1572
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.23333333333333334,
+    "prefetch_issued_used_ratio": 0.1282051282051282,
+    "prefetch_candidate_assignment_coverage": 0.3111111111111111,
+    "prefetch_issued_assignment_coverage": 0.03333333333333333,
+    "prefetch_issued_unused_ratio": 0.8717948717948718,
+    "resident_miss_experts": 1127,
+    "resident_miss_assignments": 1597,
+    "eviction_damaged_miss_experts": 369,
+    "eviction_damaged_miss_assignments": 369,
+    "eviction_damage_miss_ratio": 0.32741792369121564,
+    "eviction_damage_assignment_ratio": 0.23105823418910457,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.2613615551115551,
+    "route_drift_ratio": 0.7386384448884449,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache32_prefetch4",
+    "cache_size": 32,
+    "prefetch_size": 4,
+    "event_counts": {
+      "load": 1369,
+      "placement": 260,
+      "buffer_load": 1564,
+      "evict": 537,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.6764847899565427,
+    "live_cache_miss_ratio": 0.3235152100434573,
+    "cpu_assignment_ratio": 0.08823529411764706,
+    "gpu_assignment_ratio": 0.9117647058823529,
+    "prefetch_candidates": 900,
+    "prefetch_issued": 68,
+    "prefetch_redundant_ratio": 0.9244444444444444,
+    "prefetch_issued_candidate_ratio": 0.07555555555555556,
+    "load_by_source": {
+      "unknown": {
+        "events": 3470,
+        "loaded": 1369,
+        "evicted": 537,
+        "buffered": 1564
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.27444444444444444,
+    "prefetch_issued_used_ratio": 0.1323529411764706,
+    "prefetch_candidate_assignment_coverage": 0.18296296296296297,
+    "prefetch_issued_assignment_coverage": 0.006666666666666667,
+    "prefetch_issued_unused_ratio": 0.8676470588235294,
+    "resident_miss_experts": 670,
+    "resident_miss_assignments": 995,
+    "eviction_damaged_miss_experts": 105,
+    "eviction_damaged_miss_assignments": 105,
+    "eviction_damage_miss_ratio": 0.15671641791044777,
+    "eviction_damage_assignment_ratio": 0.10552763819095477,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.275,
+    "route_drift_ratio": 0.725,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache32_prefetch8",
+    "cache_size": 32,
+    "prefetch_size": 8,
+    "event_counts": {
+      "load": 1442,
+      "placement": 260,
+      "buffer_load": 1564,
+      "evict": 610,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.6827619507484307,
+    "live_cache_miss_ratio": 0.3172380492515693,
+    "cpu_assignment_ratio": 0.08823529411764706,
+    "gpu_assignment_ratio": 0.9117647058823529,
+    "prefetch_candidates": 1800,
+    "prefetch_issued": 152,
+    "prefetch_redundant_ratio": 0.9155555555555556,
+    "prefetch_issued_candidate_ratio": 0.08444444444444445,
+    "load_by_source": {
+      "unknown": {
+        "events": 3616,
+        "loaded": 1442,
+        "evicted": 610,
+        "buffered": 1564
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.24944444444444444,
+    "prefetch_issued_used_ratio": 0.13157894736842105,
+    "prefetch_candidate_assignment_coverage": 0.3325925925925926,
+    "prefetch_issued_assignment_coverage": 0.014814814814814815,
+    "prefetch_issued_unused_ratio": 0.868421052631579,
+    "resident_miss_experts": 657,
+    "resident_miss_assignments": 982,
+    "eviction_damaged_miss_experts": 105,
+    "eviction_damaged_miss_assignments": 105,
+    "eviction_damage_miss_ratio": 0.1598173515981735,
+    "eviction_damage_assignment_ratio": 0.10692464358452139,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.273778305028305,
+    "route_drift_ratio": 0.726221694971695,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache48_prefetch4",
+    "cache_size": 48,
+    "prefetch_size": 4,
+    "event_counts": {
+      "load": 1510,
+      "placement": 260,
+      "buffer_load": 1553,
+      "evict": 262,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.8232737807822308,
+    "live_cache_miss_ratio": 0.17672621921776918,
+    "cpu_assignment_ratio": 0.08823529411764706,
+    "gpu_assignment_ratio": 0.9117647058823529,
+    "prefetch_candidates": 900,
+    "prefetch_issued": 49,
+    "prefetch_redundant_ratio": 0.9455555555555556,
+    "prefetch_issued_candidate_ratio": 0.05444444444444444,
+    "load_by_source": {
+      "unknown": {
+        "events": 3325,
+        "loaded": 1510,
+        "evicted": 262,
+        "buffered": 1553
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.2688888888888889,
+    "prefetch_issued_used_ratio": 0.14285714285714285,
+    "prefetch_candidate_assignment_coverage": 0.17925925925925926,
+    "prefetch_issued_assignment_coverage": 0.005185185185185185,
+    "prefetch_issued_unused_ratio": 0.8571428571428572,
+    "resident_miss_experts": 366,
+    "resident_miss_assignments": 519,
+    "eviction_damaged_miss_experts": 51,
+    "eviction_damaged_miss_assignments": 51,
+    "eviction_damage_miss_ratio": 0.13934426229508196,
+    "eviction_damage_assignment_ratio": 0.09826589595375723,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.2699467199467199,
+    "route_drift_ratio": 0.7300532800532801,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache48_prefetch8",
+    "cache_size": 48,
+    "prefetch_size": 8,
+    "event_counts": {
+      "load": 1550,
+      "placement": 260,
+      "buffer_load": 1553,
+      "evict": 302,
+      "prefetch_issue": 225
+    },
+    "placement_events": 260,
+    "live_cache_hit_ratio": 0.8256880733944955,
+    "live_cache_miss_ratio": 0.1743119266055046,
+    "cpu_assignment_ratio": 0.08823529411764706,
+    "gpu_assignment_ratio": 0.9117647058823529,
+    "prefetch_candidates": 1800,
+    "prefetch_issued": 92,
+    "prefetch_redundant_ratio": 0.9488888888888889,
+    "prefetch_issued_candidate_ratio": 0.051111111111111114,
+    "load_by_source": {
+      "unknown": {
+        "events": 3405,
+        "loaded": 1550,
+        "evicted": 302,
+        "buffered": 1553
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 225,
+    "prefetch_candidate_used_ratio": 0.23777777777777778,
+    "prefetch_issued_used_ratio": 0.18478260869565216,
+    "prefetch_candidate_assignment_coverage": 0.31703703703703706,
+    "prefetch_issued_assignment_coverage": 0.012592592592592593,
+    "prefetch_issued_unused_ratio": 0.8152173913043479,
+    "resident_miss_experts": 361,
+    "resident_miss_assignments": 514,
+    "eviction_damaged_miss_experts": 62,
+    "eviction_damaged_miss_assignments": 62,
+    "eviction_damage_miss_ratio": 0.17174515235457063,
+    "eviction_damage_assignment_ratio": 0.12062256809338522,
+    "decode_events": 234,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.253459040959041,
+    "route_drift_ratio": 0.7465409590409591,
+    "same_layer_jaccard_samples": 208
+  },
+  {
+    "run": "cache56_prefetch4",
+    "cache_size": 56,
+    "prefetch_size": 4,
+    "event_counts": {
+      "load": 1649,
+      "placement": 728,
+      "buffer_load": 1545,
+      "evict": 193,
+      "prefetch_issue": 675
+    },
+    "placement_events": 728,
+    "live_cache_hit_ratio": 0.9237548678007789,
+    "live_cache_miss_ratio": 0.07624513219922115,
+    "cpu_assignment_ratio": 0.12857142857142856,
+    "gpu_assignment_ratio": 0.8714285714285714,
+    "prefetch_candidates": 2700,
+    "prefetch_issued": 77,
+    "prefetch_redundant_ratio": 0.9714814814814815,
+    "prefetch_issued_candidate_ratio": 0.02851851851851852,
+    "load_by_source": {
+      "unknown": {
+        "events": 3387,
+        "loaded": 1649,
+        "evicted": 193,
+        "buffered": 1545
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 675,
+    "prefetch_candidate_used_ratio": 0.24481481481481482,
+    "prefetch_issued_used_ratio": 0.23376623376623376,
+    "prefetch_candidate_assignment_coverage": 0.16320987654320987,
+    "prefetch_issued_assignment_coverage": 0.0044444444444444444,
+    "prefetch_issued_unused_ratio": 0.7662337662337663,
+    "resident_miss_experts": 372,
+    "resident_miss_assignments": 457,
+    "eviction_damaged_miss_experts": 62,
+    "eviction_damaged_miss_assignments": 62,
+    "eviction_damage_miss_ratio": 0.16666666666666666,
+    "eviction_damage_assignment_ratio": 0.13566739606126915,
+    "decode_events": 702,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.2157304234227311,
+    "route_drift_ratio": 0.7842695765772689,
+    "same_layer_jaccard_samples": 676
+  },
+  {
+    "run": "cache56_prefetch8",
+    "cache_size": 56,
+    "prefetch_size": 8,
+    "event_counts": {
+      "load": 1663,
+      "placement": 624,
+      "buffer_load": 1545,
+      "evict": 207,
+      "prefetch_issue": 575
+    },
+    "placement_events": 624,
+    "live_cache_hit_ratio": 0.92737955346651,
+    "live_cache_miss_ratio": 0.07262044653349001,
+    "cpu_assignment_ratio": 0.12365591397849462,
+    "gpu_assignment_ratio": 0.8763440860215054,
+    "prefetch_candidates": 4600,
+    "prefetch_issued": 99,
+    "prefetch_redundant_ratio": 0.9784782608695652,
+    "prefetch_issued_candidate_ratio": 0.021521739130434783,
+    "load_by_source": {
+      "unknown": {
+        "events": 3415,
+        "loaded": 1663,
+        "evicted": 207,
+        "buffered": 1545
+      }
+    },
+    "prefetch_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "expert_wait": {
+      "events": 0,
+      "total_ms": null,
+      "avg_ms": null,
+      "max_ms": null,
+      "late_ratio": null
+    },
+    "matched_prefetch_windows": 575,
+    "prefetch_candidate_used_ratio": 0.2273913043478261,
+    "prefetch_issued_used_ratio": 0.1717171717171717,
+    "prefetch_candidate_assignment_coverage": 0.30318840579710143,
+    "prefetch_issued_assignment_coverage": 0.004927536231884058,
+    "prefetch_issued_unused_ratio": 0.8282828282828283,
+    "resident_miss_experts": 309,
+    "resident_miss_assignments": 394,
+    "eviction_damaged_miss_experts": 55,
+    "eviction_damaged_miss_assignments": 55,
+    "eviction_damage_miss_ratio": 0.1779935275080906,
+    "eviction_damage_assignment_ratio": 0.13959390862944163,
+    "decode_events": 598,
+    "unique_experts": 64,
+    "avg_same_layer_jaccard": 0.21444464626282808,
+    "route_drift_ratio": 0.7855553537371719,
+    "same_layer_jaccard_samples": 572
+  }
+]

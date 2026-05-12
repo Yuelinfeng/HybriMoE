@@ -1,0 +1,83 @@
+{
+  "trace_path": "/root/autodl-tmp/hybrimoe_live_trace/cache16_prefetch4/expert_cache_trace/expert_cache_trace.jsonl",
+  "stage_filter": "decode",
+  "events_used": 4489,
+  "events_skipped": 26,
+  "placement": {
+    "placement_events": 234,
+    "selected_experts": 1404,
+    "resident_hit_experts": 700,
+    "resident_miss_experts": 704,
+    "resident_hit_expert_ratio": 0.4985754985754986,
+    "assignments": 1404,
+    "resident_hit_assignments": 700,
+    "resident_miss_assignments": 704,
+    "resident_hit_assignment_ratio": 0.4985754985754986,
+    "gpu_assignments": 1164,
+    "cpu_assignments": 240,
+    "gpu_assignment_ratio": 0.8290598290598291,
+    "cpu_assignment_ratio": 0.17094017094017094,
+    "by_stage": {
+      "decode": {
+        "events": 234,
+        "selected_experts": 1404,
+        "resident_hit_experts": 700,
+        "assignments": 1404,
+        "resident_hit_assignments": 700,
+        "gpu_assignments": 1164,
+        "cpu_assignments": 240,
+        "resident_hit_expert_ratio": 0.4985754985754986,
+        "resident_hit_assignment_ratio": 0.4985754985754986,
+        "gpu_assignment_ratio": 0.8290598290598291,
+        "cpu_assignment_ratio": 0.17094017094017094
+      }
+    }
+  },
+  "prefetch": {
+    "prefetch_issue_events": 225,
+    "prefetch_candidate_experts": 900,
+    "prefetch_already_resident_experts": 767,
+    "prefetch_issued_load_experts": 133,
+    "prefetch_redundant_candidate_ratio": 0.8522222222222222,
+    "prefetch_issued_candidate_ratio": 0.14777777777777779
+  },
+  "prefetch_match": {
+    "matched_prefetch_windows": 225,
+    "matched_prefetch_candidates": 900,
+    "matched_issued_loads": 133,
+    "prefetch_candidate_used_by_next_layer_ratio": 0.25666666666666665,
+    "prefetch_issued_used_by_next_layer_ratio": 0.14285714285714285,
+    "prefetch_candidate_assignment_coverage_ratio": 0.1711111111111111,
+    "prefetch_issued_assignment_coverage_ratio": 0.014074074074074074,
+    "candidate_overlap_experts": 231,
+    "issued_overlap_experts": 19,
+    "matched_placement_assignments": 1350
+  },
+  "load_evict": {
+    "load_evict_events": 4030,
+    "loaded_experts": 1437,
+    "buffered_experts": 1572,
+    "evicted_experts": 1021,
+    "evictions_per_loaded_expert": 0.7105080027835768,
+    "by_type": {
+      "buffer_load": {
+        "events": 1572,
+        "loaded_experts": 0,
+        "buffered_experts": 1572,
+        "evicted_experts": 0
+      },
+      "evict": {
+        "events": 1021,
+        "loaded_experts": 0,
+        "buffered_experts": 0,
+        "evicted_experts": 1021
+      },
+      "load": {
+        "events": 1437,
+        "loaded_experts": 1437,
+        "buffered_experts": 0,
+        "evicted_experts": 0
+      }
+    }
+  }
+}

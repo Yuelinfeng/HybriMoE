@@ -1,0 +1,10 @@
+run,cache_size,prefetch_size,source,events,loaded,evicted,buffered
+cache16_prefetch0,16,0,unknown,3752,1298,882,1572
+cache16_prefetch4,16,4,unknown,4030,1437,1021,1572
+cache16_prefetch8,16,8,unknown,4414,1629,1213,1572
+cache32_prefetch4,32,4,unknown,3470,1369,537,1564
+cache32_prefetch8,32,8,unknown,3616,1442,610,1564
+cache48_prefetch4,48,4,unknown,3325,1510,262,1553
+cache48_prefetch8,48,8,unknown,3405,1550,302,1553
+cache56_prefetch4,56,4,unknown,3387,1649,193,1545
+cache56_prefetch8,56,8,unknown,3415,1663,207,1545
